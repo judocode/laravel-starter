@@ -20,7 +20,7 @@ class StartCommand extends Command
         
         $this->generateLayoutFiles();
 
-        $moreTables = $this->confirm('Do you want to add more tables [yes/no]? ', true);
+        $moreTables = $this->confirm('Do you want to add more tables [y/n]? ', true);
         while( $moreTables )
         {
             // Get the name of the model
@@ -34,7 +34,7 @@ class StartCommand extends Command
             $propertiesArr = array();
             $propertiesStr = "";
 
-            $additionalFields = $this->confirm('Do you want more fields in the '.$namePlural.' table other than id [yes/no]? ', true);
+            $additionalFields = $this->confirm('Do you want more fields in the '.$namePlural.' table other than id [y/n]? ', true);
             if( $additionalFields )
             {
                 $fieldNames = $this->ask('Please specify the field names in name:type format: ');
@@ -66,7 +66,7 @@ class StartCommand extends Command
             *                       Run #migrations
             *
             ********************************************************************/
-            $editMigrations = $this->confirm('Would you like to edit your migrations file before running it [yes/no]? ', true);
+            $editMigrations = $this->confirm('Would you like to edit your migrations file before running it [y/n]? ', true);
             if( $editMigrations )
             {
                 $this->error('Remember to run "php artisan migrate" after editing your migration file');
@@ -448,7 +448,7 @@ class StartCommand extends Command
 
             $this->info('Tests created!');
 
-            $moreTables = $this->confirm('Do you want to add more tables [yes/no]? ', true);
+            $moreTables = $this->confirm('Do you want to add more tables [y/n]? ', true);
         }
 
         $this->info('Done!');
@@ -504,7 +504,7 @@ class StartCommand extends Command
     */
     private function generateLayoutFiles()
     {
-        $makeLayout = $this->confirm('Do you want to create a default layout file [yes/no]? ', true);
+        $makeLayout = $this->confirm('Do you want to create a default layout file [y/n]? ', true);
         if( $makeLayout )
         {
             $layoutDir = 'app/views/layouts';
@@ -529,7 +529,7 @@ class StartCommand extends Command
 
             if(\File::exists($layoutPath))
             {
-                $overwrite = $this->confirm('Layout file exists. Overwrite? [yes/no]? ', true);
+                $overwrite = $this->confirm('Layout file exists. Overwrite? [y/n]? ', true);
             }
 
 
@@ -549,7 +549,7 @@ class StartCommand extends Command
                 $fileContents .= "<body>\n";
                 $fileContents .= "\t@yield('content')\n";
 
-                $jquery = $this->confirm('Do you want jquery [yes/no]? ', true);
+                $jquery = $this->confirm('Do you want jquery [y/n]? ', true);
                 if( $jquery )
                 {
                     $fileContents .= "<script src=\"{{ url('js/jquery.js') }}\"></script>\n";
@@ -565,7 +565,7 @@ class StartCommand extends Command
                     $this->info("public/js/jquery.js (v1.9.1) created!");
                 }
 
-                $bootstrap = $this->confirm('Do you want twitter bootstrap [yes/no]? ', true);
+                $bootstrap = $this->confirm('Do you want twitter bootstrap [y/n]? ', true);
                 if( $bootstrap )
                 {
                     $ch = curl_init("http://twitter.github.com/bootstrap/assets/bootstrap.zip");
@@ -625,7 +625,7 @@ class StartCommand extends Command
                 }
                 else
                 {
-                    $foundation = $this->confirm('Do you want foundation [yes/no]? ', true);
+                    $foundation = $this->confirm('Do you want foundation [y/n]? ', true);
                     if( $foundation )
                     {
                         $ch = curl_init("http://foundation.zurb.com/files/foundation-4.0.4.zip");
@@ -672,7 +672,7 @@ class StartCommand extends Command
                     }
                 }
 
-                $underscore = $this->confirm('Do you want underscore [yes/no]? ', true);
+                $underscore = $this->confirm('Do you want underscore [y/n]? ', true);
                 if( $underscore )
                 {
                     $ch = curl_init("http://underscorejs.org/underscore-min.js");
@@ -688,7 +688,7 @@ class StartCommand extends Command
                     $this->info("public/js/underscore.js created!");
                 }
 
-                $angular = $this->confirm('Do you want angular [yes/no]? ', true);
+                $angular = $this->confirm('Do you want angular [y/n]? ', true);
                 if( $angular )
                 {
                     $ch = curl_init("https://ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular.min.js");
@@ -705,7 +705,7 @@ class StartCommand extends Command
                 }
                 else
                 {
-                    $ember = $this->confirm('Do you want ember [yes/no]? ', true);
+                    $ember = $this->confirm('Do you want ember [y/n]? ', true);
                     if( $ember )
                     {
                         $ch = curl_init("https://raw.github.com/emberjs/ember.js/release-builds/ember-1.0.0-rc.1.min.js");
@@ -722,7 +722,7 @@ class StartCommand extends Command
                     }
                     else
                     {
-                        $backbone = $this->confirm('Do you want backbone [yes/no]? ', true);
+                        $backbone = $this->confirm('Do you want backbone [y/n]? ', true);
                         if( $backbone )
                         {
                             $ch = curl_init("http://backbonejs.org/backbone-min.js");
