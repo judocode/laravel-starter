@@ -69,7 +69,7 @@ class StartCommand extends Command
             $editMigrations = $this->confirm('Would you like to edit your migrations file before running it [yes/no]? ', true);
             if( $editMigrations )
             {
-                $this->info('Remember to run "php artisan migrate" after editing your migration file');
+                $this->error('Remember to run "php artisan migrate" after editing your migration file');
             }
             else
             {
@@ -179,11 +179,11 @@ class StartCommand extends Command
             $fileContents .= "    public function index()\n";
             $fileContents .= "    {\n";
             $fileContents .= "    \t\$$namePlural = \$this->".$namePlural."->all();\n";
-            $fileContents .= "        \$this->layout->content = View::make('$name.all', compact('$namePlural'));\n";
+            $fileContents .= "        \$this->layout->content = View::make('$namePlural.all', compact('$namePlural'));\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function create()\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$this->layout->content = View::make('$name.new');\n";
+            $fileContents .= "        \$this->layout->content = View::make('$namePlural.new');\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function store()\n";
             $fileContents .= "    {\n";
@@ -203,12 +203,12 @@ class StartCommand extends Command
             $fileContents .= "    {\n";
             $fileContents .= "        \$$name = $nameUpper::find(\$id);\n";
             $fileContents .= "        //return Response::json(['$name' => \$name]);\n";
-            $fileContents .= "        \$this->layout->content = View::make('$name.view')->with('$name', \$name);\n";
+            $fileContents .= "        \$this->layout->content = View::make('$namePlural.view')->with('$name', \$name);\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function edit( \$id )\n";
             $fileContents .= "    {\n";
             $fileContents .= "        \$$name = $nameUpper::find(\$id);\n";
-            $fileContents .= "        \$this->layout->content = View::make('$name.edit')->with('$name', \$$name);\n";
+            $fileContents .= "        \$this->layout->content = View::make('$namePlural.edit')->with('$name', \$$name);\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function update( \$id )\n";
             $fileContents .= "    {\n";
@@ -425,7 +425,7 @@ class StartCommand extends Command
             $fileContents .= "}\n";
             $this->fileExists($fileName, $fileContents);
 
-            $this->info('Tests file created ('.$fileName.')!');
+            $this->info('Tests created!');
 
             $moreTables = $this->confirm('Do you want to add more tables [yes/no]? ', true);
         }
