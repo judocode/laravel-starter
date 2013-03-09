@@ -140,6 +140,10 @@ class StartCommand extends Command
             $fileContents = "<?php\n\n";
             $fileContents .= "interface ".$nameUpper."RepositoryInterface {\n";
             $fileContents .= "\tpublic function all();\n";
+            $fileContents .= "\tpublic function find(\$id);\n";
+            $fileContents .= "\tpublic function store(\$input);\n";
+            $fileContents .= "\tpublic function update(\$id, \$input);\n";
+            $fileContents .= "\tpublic function destroy(\$id);\n";
             $fileContents .= "}\n";
             $this->fileExists($fileName, $fileContents);
 
@@ -150,7 +154,40 @@ class StartCommand extends Command
             $fileContents .= "\t{\n";
             $fileContents .= "\t\treturn ".$nameUpper."::all();\n";
             $fileContents .= "\t}\n";
+            $fileContents .= "\tpublic function find(\$id)\n";
+            $fileContents .= "\t{\n";
+            $fileContents .= "\t\treturn ".$nameUpper."::find(\$id);\n";
+            $fileContents .= "\t}\n";
+            $fileContents .= "\tpublic function store(\$input)\n";
+            $fileContents .= "\t{\n";
+            $fileContents .= "        \$$name = new $nameUpper;\n";
+            if($propertiesArr)
+            {
+                foreach($propertiesArr as $property)
+                {
+                    $fileContents .= "        \$".$name."->".$property." = \$input['".$property."'];\n";
+                }
+            }
+            $fileContents .= "        \$".$name."->save();\n";
+            $fileContents .= "\t}\n";
+            $fileContents .= "\tpublic function update(\$id, \$input)\n";
+            $fileContents .= "\t{\n";
+            $fileContents .= "\t\t\$$name = \$this->find(\$id);\n";
+            if($propertiesArr)
+            {
+                foreach($propertiesArr as $property)
+                {
+                    $fileContents .= "        \$".$name."->".$property." = \$input['".$property."'];\n";
+                }
+            }
+            $fileContents .= "        \$".$name."->save();\n";
+            $fileContents .= "\t}\n";
+            $fileContents .= "\tpublic function destroy(\$id)\n";
+            $fileContents .= "\t{\n";
+            $fileContents .= "\t\t\$this->find(\$id)->delete()\n";
+            $fileContents .= "\t}\n";
             $fileContents .= "}\n";
+
             $this->fileExists('app/repositories/'.$nameUpper.'Repository.php', $fileContents);
 
             $content = \File::get('app/start/global.php');
@@ -187,45 +224,29 @@ class StartCommand extends Command
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function store()\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$input = Input::only(array(".$propertiesStr."));\n";
-            $fileContents .= "        \$$name = new $nameUpper;\n";
-            if($propertiesArr)
-            {
-                foreach($propertiesArr as $property)
-                {
-                    $fileContents .= "        \$".$name."->".$property." = \$input['".$property."'];\n";
-                }
-            }
-            $fileContents .= "        \$".$name."->save();\n";
-            $fileContents .= "        return Redirect::to('$name');\n";
+            $fileContents .= "        \$this->authors->store(Input::only([".$propertiesStr."]));\n";
+
+            $fileContents .= "        return Redirect::to('$namePlural');\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function show( \$id )\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$name = $nameUpper::find(\$id);\n";
-            $fileContents .= "        //return Response::json(['$name' => \$name]);\n";
-            $fileContents .= "        \$this->layout->content = View::make('$namePlural.view')->with('$name', \$name);\n";
+            $fileContents .= "        \$$name = \$this->".$namePlural."->find(\$id);\n";
+            $fileContents .= "        \$this->layout->content = View::make('$namePlural.view')->with('$name', \$$name);\n";
+            $fileContents .= "        //return Response::json(['$name' => \$$name]);\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function edit( \$id )\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$name = $nameUpper::find(\$id);\n";
+            $fileContents .= "        \$$name = \$this->".$namePlural."->find(\$id);\n";
             $fileContents .= "        \$this->layout->content = View::make('$namePlural.edit')->with('$name', \$$name);\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function update( \$id )\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$name = $nameUpper::find(\$id);\n";
-            $fileContents .= "        \$input = Input::only(array(".$propertiesStr."));\n";
-            if($propertiesArr)
-            {
-                foreach($propertiesArr as $property)
-                {
-                    $fileContents .= "        \$".$name."->".$property." = \$input['".$property."'];\n";
-                }
-            }
-            $fileContents .= "        \$".$name."->save();\n";
+            $fileContents .= "        \$$name = \$this->".$namePlural."->update(\$id, Input::only([".$propertiesStr."]));\n";
+            $fileContents .= "        return Redirect::to('$namePlural/'.\$id);\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function destroy( \$id )\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        return $nameUpper::find(\$id)->delete();\n";
+            $fileContents .= "        \$this->".$namePlural."->destroy(\$id);\n";
             $fileContents .= "    }\n";
             $fileContents .= "}\n";
             $this->fileExists($fileName, $fileContents);
@@ -243,7 +264,7 @@ class StartCommand extends Command
             $fileContents = "@section('content')\n";
             $fileContents .= "<div class=\"toolbar\">\n";
             $fileContents .= "    <h1>Viewing $name</h1>\n";
-            $fileContents .= "    <a class=\"btn\" href=\"{{ path('$name/'.\$".$name."->id.'/edit') }}\">Edit</a>\n";
+            $fileContents .= "    <a class=\"btn\" href=\"{{ url('$namePlural/'.\$".$name."->id.'/edit') }}\">Edit</a>\n";
             $fileContents .= "</div>\n";
             $fileContents .= "<div class=\"inner-main-content\">\n";
             $fileContents .= "    <ul>\n";
@@ -271,8 +292,8 @@ class StartCommand extends Command
             $fileContents .= "    <h2>Edit $name</h2>\n";
             $fileContents .= "</div>\n";
             $fileContents .= "<div class=\"inner-main-content\">\n";
-            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ path('$name/'.\$".$name."->id) }}\">\n";
-            $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">";
+            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('$namePlural/'.\$".$name."->id) }}\">\n";
+            $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
             if($propertiesArr)
             {
                 foreach($propertiesArr as $property)
@@ -307,7 +328,7 @@ class StartCommand extends Command
             $fileContents = "@section('content')\n";
             $fileContents .= "<div class=\"toolbar\">\n";
             $fileContents .= "    <h1>All $nameUpperPlural</h1>\n";
-            $fileContents .= "    <a class=\"btn\" href=\"{{ path('$name/create') }}\">New</a>\n";
+            $fileContents .= "    <a class=\"btn\" href=\"{{ url('$namePlural/create') }}\">New</a>\n";
             $fileContents .= "</div>\n";
             $fileContents .= "<div class=\"inner-main-content\">\n";
             $fileContents .= "<table class=\"table\">\n";
@@ -327,7 +348,7 @@ class StartCommand extends Command
             {
                 foreach($propertiesArr as $property)
                 {
-                    $fileContents .= "<td><a href=\"{{ path('$name"."/'.\$".$name."->id) }}\">{{ \$".$name."->$property }}</a></td>";
+                    $fileContents .= "<td><a href=\"{{ url('$namePlural"."/'.\$".$name."->id) }}\">{{ \$".$name."->$property }}</a></td>";
                 }
             }
             $fileContents .= "\n\t</tr>\n";
@@ -349,7 +370,7 @@ class StartCommand extends Command
             $fileContents .= "    <h2>New $nameUpper</h2>\n";
             $fileContents .= "</div>\n";
             $fileContents .= "<div class=\"inner-main-content\">\n";
-            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ path('$name') }}\">\n";
+            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('$namePlural') }}\">\n";
             if($propertiesArr)
             {
                 foreach($propertiesArr as $property)
@@ -373,7 +394,7 @@ class StartCommand extends Command
             $fileContents .= "</div>\n";
             $fileContents .= "@stop\n";     
             $this->fileExists($fileName, $fileContents);
-            $this->info('Views created successfully!');
+            $this->info('Views created!');
 
             /*******************************************************************
             *
@@ -493,8 +514,11 @@ class StartCommand extends Command
             $layoutPath = $layoutDir.'/default.blade.php';
 
             $content = \File::get('app/controllers/BaseController.php');
-            $content = preg_replace("/Controller {/", "Controller {\n\tprotected $layout = 'layouts.default';", $content);
-            \File::put('app/controllers/BaseController.php', $content);
+            if(preg_match("/\$layout/", $content) !== 1)
+            {
+                $content = preg_replace("/Controller {/", "Controller {\n\tprotected \$layout = 'layouts.default';", $content);
+                \File::put('app/controllers/BaseController.php', $content);
+            }
 
             if(!\File::isDirectory('public/js'))
                 \File::makeDirectory('public/js');
@@ -520,7 +544,7 @@ class StartCommand extends Command
                 $fileContents .= "\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
                 $fileContents .= "\t<title>Untitled</title>\n";
                 $fileContents .= "<!-- CSS -->\n";
-                $fileContents .= "\t<link rel=\"stylesheet\" href=\"{{ path('css/style.css') }}\">\n";
+                $fileContents .= "\t<link rel=\"stylesheet\" href=\"{{ url('css/style.css') }}\">\n";
                 $fileContents .= "</head>\n";
                 $fileContents .= "<body>\n";
                 $fileContents .= "\t@yield('content')\n";
@@ -528,7 +552,7 @@ class StartCommand extends Command
                 $jquery = $this->confirm('Do you want jquery [yes/no]? ', true);
                 if( $jquery )
                 {
-                    $fileContents .= "<script src=\"{{ path('js/jquery.js') }}\"></script>\n";
+                    $fileContents .= "<script src=\"{{ url('js/jquery.js') }}\"></script>\n";
                     $ch = curl_init("http://code.jquery.com/jquery-1.9.1.min.js");
                     $fp = fopen("public/js/jquery.js", "w");
 
@@ -588,15 +612,15 @@ class StartCommand extends Command
                       \File::delete('public/bootstrap.zip');
                     }
 
-                    $fileReplace = "\t<link href=\"{{ path('bootstrap/css/bootstrap.css') }}\" rel=\"stylesheet\">\n";
+                    $fileReplace = "\t<link href=\"{{ url('bootstrap/css/bootstrap.css') }}\" rel=\"stylesheet\">\n";
                     $fileReplace .= "\t<style>\n";
                     $fileReplace .= "\t\tbody {\n";
                     $fileReplace .= "\t\tpadding-top: 60px;\n";
                     $fileReplace .= "\t\t}\n";
                     $fileReplace .= "\t</style>\n";
-                    $fileReplace .= "\t<link href=\"{{ path('bootstrap/css/bootstrap-responsive.css') }}\" rel=\"stylesheet\">\n";
+                    $fileReplace .= "\t<link href=\"{{ url('bootstrap/css/bootstrap-responsive.css') }}\" rel=\"stylesheet\">\n";
                     $fileContents = preg_replace('/<!-- CSS -->/',  $fileReplace, $fileContents);
-                    $fileContents .= "<script src=\"{{ path('js/bootstrap/bootstrap.js') }}\"></script>\n";
+                    $fileContents .= "<script src=\"{{ url('js/bootstrap/bootstrap.js') }}\"></script>\n";
                     $this->info("Bootstrap files loaded to public/bootstrap!");
                 }
                 else
@@ -641,9 +665,9 @@ class StartCommand extends Command
                             \File::deleteDirectory('public/js/vendor');
                             \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
                         }
-                        $fileReplace = "\t<link href=\"{{ path('css/foundation.min.css') }}\" rel=\"stylesheet\">\n";
+                        $fileReplace = "\t<link href=\"{{ url('css/foundation.min.css') }}\" rel=\"stylesheet\">\n";
                         $fileContents = preg_replace('/<!-- CSS -->/', $fileReplace, $fileContents);
-                        $fileContents .= "<script src=\"{{ path('js/foundation.js') }}\"></script>\n";
+                        $fileContents .= "<script src=\"{{ url('js/foundation.js') }}\"></script>\n";
                         $this->info('Foundation successfully set up (v4.0.4)!');
                     }
                 }
@@ -660,7 +684,7 @@ class StartCommand extends Command
                     curl_exec($ch);
                     curl_close($ch);
                     fclose($fp);
-                    $fileContents .= "<script src=\"{{ path('js/underscore.js') }}\"></script>\n";
+                    $fileContents .= "<script src=\"{{ url('js/underscore.js') }}\"></script>\n";
                     $this->info("public/js/underscore.js created!");
                 }
 
@@ -676,7 +700,7 @@ class StartCommand extends Command
                     curl_exec($ch);
                     curl_close($ch);
                     fclose($fp);
-                    $fileContents .= "<script src=\"{{ path('js/angular.js') }}\"></script>\n";
+                    $fileContents .= "<script src=\"{{ url('js/angular.js') }}\"></script>\n";
                     $this->info("public/js/angular.js (v1.0.5) created!");
                 }
                 else
@@ -693,7 +717,7 @@ class StartCommand extends Command
                         curl_exec($ch);
                         curl_close($ch);
                         fclose($fp);
-                        $fileContents .= "<script src=\"{{ path('js/ember.js') }}\"></script>\n";
+                        $fileContents .= "<script src=\"{{ url('js/ember.js') }}\"></script>\n";
                         $this->info("public/js/ember.js (v1.0.0-rc1) created!");
                     }
                     else
@@ -710,12 +734,12 @@ class StartCommand extends Command
                             curl_exec($ch);
                             curl_close($ch);
                             fclose($fp);
-                            $fileContents .= "<script src=\"{{ path('js/backbone.js') }}\"></script>\n";
+                            $fileContents .= "<script src=\"{{ url('js/backbone.js') }}\"></script>\n";
                             $this->info("public/js/backbone.js created!");
                         }
                     }
                 }
-                $fileContents .= "<script src=\"{{ path('js/main.js') }}\"></script>\n";
+                $fileContents .= "<script src=\"{{ url('js/main.js') }}\"></script>\n";
                 $fileContents .= "</body>\n";
                 $fileContents .= "</html>\n";
                 \File::put($layoutPath, $fileContents);
