@@ -83,7 +83,7 @@ class StartCommand extends Command
                     {
                         $this->info('Error: ' . $e->getMessage());
                         $this->error('This table already exists and/or you have duplicate migration files.');
-                        $this->confirm('Please fix the error and enter "yes" to continue. ', true);
+                        $this->confirm('Fix the error and enter "yes" ', true);
                     }
                 }
             }
@@ -520,13 +520,6 @@ class StartCommand extends Command
                 $fileContents .= "\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
                 $fileContents .= "\t<title>Untitled</title>\n";
                 $fileContents .= "<!-- CSS -->\n";
-                $fileContents .= "\t<link href=\"{{ path('bootstrap/css/bootstrap.css') }}\" rel=\"stylesheet\">\n";
-                $fileContents .= "\t<style>\n";
-                $fileContents .= "\t\tbody {\n";
-                $fileContents .= "\t\tpadding-top: 60px;\n";
-                $fileContents .= "\t\t}\n";
-                $fileContents .= "\t</style>\n";
-                $fileContents .= "\t<link href=\"{{ path('bootstrap/css/bootstrap-responsive.css') }}\" rel=\"stylesheet\">\n";
                 $fileContents .= "\t<link rel=\"stylesheet\" href=\"{{ path('css/style.css') }}\">\n";
                 $fileContents .= "</head>\n";
                 $fileContents .= "<body>\n";
@@ -594,6 +587,15 @@ class StartCommand extends Command
                       zip_close($zip);
                       \File::delete('public/bootstrap.zip');
                     }
+
+                    $fileReplace = "\t<link href=\"{{ path('bootstrap/css/bootstrap.css') }}\" rel=\"stylesheet\">\n";
+                    $fileReplace .= "\t<style>\n";
+                    $fileReplace .= "\t\tbody {\n";
+                    $fileReplace .= "\t\tpadding-top: 60px;\n";
+                    $fileReplace .= "\t\t}\n";
+                    $fileReplace .= "\t</style>\n";
+                    $fileReplace .= "\t<link href=\"{{ path('bootstrap/css/bootstrap-responsive.css') }}\" rel=\"stylesheet\">\n";
+                    $fileContents = preg_replace('/<!-- CSS -->/',  $fileReplace, $fileContents);
                     $fileContents .= "<script src=\"{{ path('js/bootstrap/bootstrap.js') }}\"></script>\n";
                     $this->info("Bootstrap files loaded to public/bootstrap!");
                 }
@@ -639,6 +641,8 @@ class StartCommand extends Command
                             \File::deleteDirectory('public/js/vendor');
                             \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
                         }
+                        $fileReplace = "\t<link href=\"{{ path('css/foundation.min.css') }}\" rel=\"stylesheet\">\n";
+                        $fileContents = preg_replace('/<!-- CSS -->/', $fileReplace, $fileContents);
                         $fileContents .= "<script src=\"{{ path('js/foundation.js') }}\"></script>\n";
                         $this->info('Foundation successfully set up (v4.0.4)!');
                     }
