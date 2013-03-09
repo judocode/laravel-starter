@@ -153,11 +153,11 @@ class StartCommand extends Command
             $fileContents .= "\tpublic function all()\n";
             $fileContents .= "\t{\n";
             $fileContents .= "\t\treturn ".$nameUpper."::all();\n";
-            $fileContents .= "\t}\n";
+            $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function find(\$id)\n";
             $fileContents .= "\t{\n";
             $fileContents .= "\t\treturn ".$nameUpper."::find(\$id);\n";
-            $fileContents .= "\t}\n";
+            $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function store(\$input)\n";
             $fileContents .= "\t{\n";
             $fileContents .= "        \$$name = new $nameUpper;\n";
@@ -169,7 +169,7 @@ class StartCommand extends Command
                 }
             }
             $fileContents .= "        \$".$name."->save();\n";
-            $fileContents .= "\t}\n";
+            $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function update(\$id, \$input)\n";
             $fileContents .= "\t{\n";
             $fileContents .= "\t\t\$$name = \$this->find(\$id);\n";
@@ -181,8 +181,8 @@ class StartCommand extends Command
                 }
             }
             $fileContents .= "        \$".$name."->save();\n";
-            $fileContents .= "\t}\n";
-            $fileContents .= "\tpublic function destroy(\$id)\n";
+            $fileContents .= "\t}\n\n";
+            $fileContents .= "\tpublic function destroy(\$id);\n";
             $fileContents .= "\t{\n";
             $fileContents .= "\t\t\$this->find(\$id)->delete()\n";
             $fileContents .= "\t}\n";
@@ -514,7 +514,7 @@ class StartCommand extends Command
             $layoutPath = $layoutDir.'/default.blade.php';
 
             $content = \File::get('app/controllers/BaseController.php');
-            if(preg_match("/\$layout/", $content) !== 1)
+            if(preg_match("/\$layout/g", $content) !== 1)
             {
                 $content = preg_replace("/Controller {/", "Controller {\n\tprotected \$layout = 'layouts.default';", $content);
                 \File::put('app/controllers/BaseController.php', $content);
