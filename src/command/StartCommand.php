@@ -182,9 +182,9 @@ class StartCommand extends Command
             }
             $fileContents .= "        \$".$name."->save();\n";
             $fileContents .= "\t}\n\n";
-            $fileContents .= "\tpublic function destroy(\$id);\n";
+            $fileContents .= "\tpublic function destroy(\$id)\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t\t\$this->find(\$id)->delete()\n";
+            $fileContents .= "\t\t\$this->find(\$id)->delete();\n";
             $fileContents .= "\t}\n";
             $fileContents .= "}\n";
 
@@ -224,7 +224,7 @@ class StartCommand extends Command
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function store()\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$this->authors->store(Input::only([".$propertiesStr."]));\n";
+            $fileContents .= "        \$this->".$namePlural."->store(Input::only([".$propertiesStr."]));\n";
 
             $fileContents .= "        return Redirect::to('$namePlural');\n";
             $fileContents .= "    }\n\n";
