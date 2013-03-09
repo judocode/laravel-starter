@@ -514,7 +514,7 @@ class StartCommand extends Command
             $layoutPath = $layoutDir.'/default.blade.php';
 
             $content = \File::get('app/controllers/BaseController.php');
-            if(preg_match("/\$layout/g", $content) !== 1)
+            if(preg_match("/\$layout/", $content) !== 1)
             {
                 $content = preg_replace("/Controller {/", "Controller {\n\tprotected \$layout = 'layouts.default';", $content);
                 \File::put('app/controllers/BaseController.php', $content);
