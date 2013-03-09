@@ -492,13 +492,16 @@ class StartCommand extends Command
 
             $layoutPath = $layoutDir.'/default.blade.php';
 
+            $content = \File::get('app/controllers/BaseController.php');
+            $content = preg_replace("/Controller {/", "Controller {\n\tprotected $layout = 'layouts.default';", $content);
+            \File::put('app/controllers/BaseController.php', $content);
+
             if(!\File::isDirectory('public/js'))
                 \File::makeDirectory('public/js');
             if(!\File::isDirectory('public/css'))
                 \File::makeDirectory('public/css');
             if(!\File::isDirectory('public/img'))
                 \File::makeDirectory('public/img');
-            $this->info('img, css, and js directories created!');
 
             if(\File::exists($layoutPath))
             {
