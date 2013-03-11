@@ -628,7 +628,7 @@ class StartCommand extends Command
                     $foundation = $this->confirm('Do you want foundation [y/n]? ', true);
                     if( $foundation )
                     {
-                        $ch = curl_init("http://foundation.zurb.com/files/foundation-4.0.4.zip");
+                        $ch = curl_init("http://foundation.zurb.com/files/foundation-4.0.5.zip");
                         $fp = fopen("public/foundation.zip", "w");
 
                         curl_setopt($ch, CURLOPT_FILE, $fp);
@@ -668,7 +668,7 @@ class StartCommand extends Command
                         $fileReplace = "\t<link href=\"/css/foundation.min.css\" rel=\"stylesheet\">\n";
                         $fileContents = preg_replace('/<!-- CSS -->/', $fileReplace, $fileContents);
                         $fileContents .= "<script src=\"/js/foundation.js\"></script>\n";
-                        $this->info('Foundation successfully set up (v4.0.4)!');
+                        $this->info('Foundation successfully set up (v4.0.5)!');
                     }
                 }
 
@@ -727,7 +727,7 @@ class StartCommand extends Command
                         curl_exec($ch);
                         curl_close($ch);
                         fclose($fp);
-                        
+
                         $fileContents .= "<script src=\"/js/handlebars.js\"></script>\n";
                         $fileContents .= "<script src=\"/js/ember.js\"></script>\n";
                         $this->info("public/js/ember.js (v1.0.0-rc1) created!");
