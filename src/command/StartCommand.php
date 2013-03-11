@@ -544,7 +544,7 @@ class StartCommand extends Command
                 $fileContents .= "\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
                 $fileContents .= "\t<title>Untitled</title>\n";
                 $fileContents .= "<!-- CSS -->\n";
-                $fileContents .= "\t<link rel=\"stylesheet\" href=\"{{ url('css/style.css') }}\">\n";
+                $fileContents .= "\t<link rel=\"stylesheet\" href=\"/css/style.css\">\n";
                 $fileContents .= "</head>\n";
                 $fileContents .= "<body>\n";
                 $fileContents .= "\t@yield('content')\n";
@@ -552,7 +552,7 @@ class StartCommand extends Command
                 $jquery = $this->confirm('Do you want jquery [y/n]? ', true);
                 if( $jquery )
                 {
-                    $fileContents .= "<script src=\"{{ url('js/jquery.js') }}\"></script>\n";
+                    $fileContents .= "<script src=\"/js/jquery.js\"></script>\n";
                     $ch = curl_init("http://code.jquery.com/jquery-1.9.1.min.js");
                     $fp = fopen("public/js/jquery.js", "w");
 
@@ -612,15 +612,15 @@ class StartCommand extends Command
                       \File::delete('public/bootstrap.zip');
                     }
 
-                    $fileReplace = "\t<link href=\"{{ url('bootstrap/css/bootstrap.css') }}\" rel=\"stylesheet\">\n";
+                    $fileReplace = "\t<link href=\"/bootstrap/css/bootstrap.css\" rel=\"stylesheet\">\n";
                     $fileReplace .= "\t<style>\n";
                     $fileReplace .= "\t\tbody {\n";
                     $fileReplace .= "\t\tpadding-top: 60px;\n";
                     $fileReplace .= "\t\t}\n";
                     $fileReplace .= "\t</style>\n";
-                    $fileReplace .= "\t<link href=\"{{ url('bootstrap/css/bootstrap-responsive.css') }}\" rel=\"stylesheet\">\n";
+                    $fileReplace .= "\t<link href=\"/bootstrap/css/bootstrap-responsive.css\" rel=\"stylesheet\">\n";
                     $fileContents = preg_replace('/<!-- CSS -->/',  $fileReplace, $fileContents);
-                    $fileContents .= "<script src=\"{{ url('js/bootstrap/bootstrap.js') }}\"></script>\n";
+                    $fileContents .= "<script src=\"/js/bootstrap/bootstrap.js\"></script>\n";
                     $this->info("Bootstrap files loaded to public/bootstrap!");
                 }
                 else
@@ -665,9 +665,9 @@ class StartCommand extends Command
                             \File::deleteDirectory('public/js/vendor');
                             \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
                         }
-                        $fileReplace = "\t<link href=\"{{ url('css/foundation.min.css') }}\" rel=\"stylesheet\">\n";
+                        $fileReplace = "\t<link href=\"/css/foundation.min.css\" rel=\"stylesheet\">\n";
                         $fileContents = preg_replace('/<!-- CSS -->/', $fileReplace, $fileContents);
-                        $fileContents .= "<script src=\"{{ url('js/foundation.js') }}\"></script>\n";
+                        $fileContents .= "<script src=\"/js/foundation.js\"></script>\n";
                         $this->info('Foundation successfully set up (v4.0.4)!');
                     }
                 }
@@ -684,7 +684,7 @@ class StartCommand extends Command
                     curl_exec($ch);
                     curl_close($ch);
                     fclose($fp);
-                    $fileContents .= "<script src=\"{{ url('js/underscore.js') }}\"></script>\n";
+                    $fileContents .= "<script src=\"/js/underscore.js\"></script>\n";
                     $this->info("public/js/underscore.js created!");
                 }
 
@@ -700,7 +700,7 @@ class StartCommand extends Command
                     curl_exec($ch);
                     curl_close($ch);
                     fclose($fp);
-                    $fileContents .= "<script src=\"{{ url('js/angular.js') }}\"></script>\n";
+                    $fileContents .= "<script src=\"/js/angular.js\"></script>\n";
                     $this->info("public/js/angular.js (v1.0.5) created!");
                 }
                 else
@@ -708,6 +708,16 @@ class StartCommand extends Command
                     $ember = $this->confirm('Do you want ember [y/n]? ', true);
                     if( $ember )
                     {
+                        $ch = curl_init("https://raw.github.com/wycats/handlebars.js/1.0.0-rc.3/dist/handlebars.js");
+                        $fp = fopen("public/js/handlebars.js", "w");
+
+                        curl_setopt($ch, CURLOPT_FILE, $fp);
+                        curl_setopt($ch, CURLOPT_HEADER, 0);
+
+                        curl_exec($ch);
+                        curl_close($ch);
+                        fclose($fp);
+
                         $ch = curl_init("https://raw.github.com/emberjs/ember.js/release-builds/ember-1.0.0-rc.1.min.js");
                         $fp = fopen("public/js/ember.js", "w");
 
@@ -717,7 +727,9 @@ class StartCommand extends Command
                         curl_exec($ch);
                         curl_close($ch);
                         fclose($fp);
-                        $fileContents .= "<script src=\"{{ url('js/ember.js') }}\"></script>\n";
+                        
+                        $fileContents .= "<script src=\"/js/handlebars.js\"></script>\n";
+                        $fileContents .= "<script src=\"/js/ember.js\"></script>\n";
                         $this->info("public/js/ember.js (v1.0.0-rc1) created!");
                     }
                     else
@@ -734,12 +746,12 @@ class StartCommand extends Command
                             curl_exec($ch);
                             curl_close($ch);
                             fclose($fp);
-                            $fileContents .= "<script src=\"{{ url('js/backbone.js') }}\"></script>\n";
+                            $fileContents .= "<script src=\"/js/backbone.js\"></script>\n";
                             $this->info("public/js/backbone.js created!");
                         }
                     }
                 }
-                $fileContents .= "<script src=\"{{ url('js/main.js') }}\"></script>\n";
+                $fileContents .= "<script src=\"/js/main.js\"></script>\n";
                 $fileContents .= "</body>\n";
                 $fileContents .= "</html>\n";
                 \File::put($layoutPath, $fileContents);
