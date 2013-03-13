@@ -9,35 +9,20 @@ class GenerateMigration {
         $tableName = str_plural($className);
 
         $createTable = "create_" . $tableName . "_table";
-        $file = \App::make('Illuminate\Database\Migrations\MigrationCreator')->create($createTable, "app/database/migrations", $tableName, true);
 
-        // Capitalize where necessary: a_simple_string => A_Simple_String
+        $migrationFile = \App::make('Illuminate\Database\Migrations\MigrationCreator')->create($createTable, "app/database/migrations", $tableName, true);
+
         $className = implode('_', array_map('ucwords', explode('_', $className)));
-
-        // Let's create the path to where the migration will be stored.
-        //$filePath = "app/database/migrations/" . date('Y_m_d_His') . strtolower("_create_".$className."s_table.php");
 
         $this->generateMigration($className, $tableName, $args);
 
-        $this->writeToFile($file);
+        $this->writeToFile($migrationFile);
 
-        require $file;
+        require $migrationFile;
     }
 
     protected function writeToFile($filePath,  $success = '')
     {
-        //$success = $success ?: "Create: $filePath.\n";
-
-        // if ( \File::exists($filePath) ) 
-        // {
-        //     // we don't want to overwrite it
-        //     echo "Warning: File already exists at $filePath\n";
-        //     return;
-        // }
-
-        // As a precaution, let's see if we need to make the folder.
-        //\File::makeDirectory(dirname($filePath));
-
         $success = \File::put($filePath, self::$content);
         if ( !$success )
             echo "Whoops - something...erghh...went wrong!\n";

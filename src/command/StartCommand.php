@@ -10,6 +10,8 @@ class StartCommand extends Command
 
     protected $description = "Makes table, controller, model, views, seeds, and repository";
 
+    private $fileContents;
+
     public function __construct()
     {
         parent::__construct();
@@ -21,13 +23,13 @@ class StartCommand extends Command
         $this->generateLayoutFiles();
 
         $moreTables = $this->confirm('Do you want to add more tables [y/n]? ', true);
+        
         while( $moreTables )
         {
-            // Get the name of the model
-            $name = strtolower($this->ask('Model/table name? '));
-            $namePlural = str_plural($name);
-            $nameUpper = ucfirst($name);
-            $nameUpperPlural = str_plural($nameUpper);
+        	$nameLower = strtolower($this->ask('Model/table name? '));
+	        $namePlural = str_plural($nameLower);
+	        $nameUpper = ucfirst($nameLower);
+	        $nameUpperPlural = str_plural($nameUpper);
 
             $this->createModel($nameUpper);
 
@@ -35,11 +37,12 @@ class StartCommand extends Command
             $propertiesStr = "";
 
             $additionalFields = $this->confirm('Do you want more fields in the '.$namePlural.' table other than id [y/n]? ', true);
+            
             if( $additionalFields )
             {
                 $fieldNames = $this->ask('Please specify the field names in name:type format: ');
                 $fieldNames = explode(' ', $fieldNames);
-                $file = new GenerateMigration($name, $fieldNames);
+                $file = new GenerateMigration($nameLower, $fieldNames);
 
                 foreach($fieldNames as $field)
                 {
@@ -56,7 +59,7 @@ class StartCommand extends Command
                 $propertiesStr = substr($propertiesStr, 0, strlen($propertiesStr)-1);
             }
             else
-                $file = new GenerateMigration($name);
+                $file = new GenerateMigration($nameLower);
 
             $app = $this->getLaravel();
             $app['composer']->dumpAutoloads();
@@ -103,7 +106,7 @@ class StartCommand extends Command
             {
                 foreach($propertiesArr as $property)
                 {
-                    $fileContents .= "\t\t\t'$property' => 'Testing $name $property',\n";
+                    $fileContents .= "\t\t\t'$property' => 'Testing $nameLower $property',\n";
                 }
             }
             $fileContents .= "\t\t);\n";
@@ -160,27 +163,27 @@ class StartCommand extends Command
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function store(\$input)\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "        \$$name = new $nameUpper;\n";
+            $fileContents .= "        \$$nameLower = new $nameUpper;\n";
             if($propertiesArr)
             {
                 foreach($propertiesArr as $property)
                 {
-                    $fileContents .= "        \$".$name."->".$property." = \$input['".$property."'];\n";
+                    $fileContents .= "        \$".$nameLower."->".$property." = \$input['".$property."'];\n";
                 }
             }
-            $fileContents .= "        \$".$name."->save();\n";
+            $fileContents .= "        \$".$nameLower."->save();\n";
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function update(\$id, \$input)\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t\t\$$name = \$this->find(\$id);\n";
+            $fileContents .= "\t\t\$$nameLower = \$this->find(\$id);\n";
             if($propertiesArr)
             {
                 foreach($propertiesArr as $property)
                 {
-                    $fileContents .= "        \$".$name."->".$property." = \$input['".$property."'];\n";
+                    $fileContents .= "        \$".$nameLower."->".$property." = \$input['".$property."'];\n";
                 }
             }
-            $fileContents .= "        \$".$name."->save();\n";
+            $fileContents .= "        \$".$nameLower."->save();\n";
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function destroy(\$id)\n";
             $fileContents .= "\t{\n";
@@ -230,18 +233,18 @@ class StartCommand extends Command
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function show( \$id )\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$name = \$this->".$namePlural."->find(\$id);\n";
-            $fileContents .= "        \$this->layout->content = View::make('$namePlural.view')->with('$name', \$$name);\n";
-            $fileContents .= "        //return Response::json(['$name' => \$$name]);\n";
+            $fileContents .= "        \$$nameLower = \$this->".$namePlural."->find(\$id);\n";
+            $fileContents .= "        \$this->layout->content = View::make('$namePlural.view')->with('$nameLower', \$$nameLower);\n";
+            $fileContents .= "        //return Response::json(['$nameLower' => \$$nameLower]);\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function edit( \$id )\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$name = \$this->".$namePlural."->find(\$id);\n";
-            $fileContents .= "        \$this->layout->content = View::make('$namePlural.edit')->with('$name', \$$name);\n";
+            $fileContents .= "        \$$nameLower = \$this->".$namePlural."->find(\$id);\n";
+            $fileContents .= "        \$this->layout->content = View::make('$namePlural.edit')->with('$nameLower', \$$nameLower);\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function update( \$id )\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$name = \$this->".$namePlural."->update(\$id, Input::only([".$propertiesStr."]));\n";
+            $fileContents .= "        \$$nameLower = \$this->".$namePlural."->update(\$id, Input::only([".$propertiesStr."]));\n";
             $fileContents .= "        return Redirect::to('$namePlural/'.\$id);\n";
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function destroy( \$id )\n";
@@ -263,8 +266,8 @@ class StartCommand extends Command
             $fileName = $dir . "view.blade.php";
             $fileContents = "@section('content')\n";
             $fileContents .= "<div class=\"toolbar\">\n";
-            $fileContents .= "    <h1>Viewing $name</h1>\n";
-            $fileContents .= "    <a class=\"btn\" href=\"{{ url('$namePlural/'.\$".$name."->id.'/edit') }}\">Edit</a>\n";
+            $fileContents .= "    <h1>Viewing $nameLower</h1>\n";
+            $fileContents .= "    <a class=\"btn\" href=\"{{ url('$namePlural/'.\$".$nameLower."->id.'/edit') }}\">Edit</a>\n";
             $fileContents .= "</div>\n";
             $fileContents .= "<div class=\"inner-main-content\">\n";
             $fileContents .= "    <ul>\n";
@@ -273,7 +276,7 @@ class StartCommand extends Command
                 foreach($propertiesArr as $property)
                 {
                     $upper = ucfirst($property);
-                    $fileContents .= "        <li>$upper: {{ \$$name->".$property." }}</li>";
+                    $fileContents .= "        <li>$upper: {{ \$$nameLower->".$property." }}</li>";
                 }
             }
             $fileContents .= "    <ul>\n";
@@ -289,10 +292,10 @@ class StartCommand extends Command
             $fileName = $dir . "edit.blade.php";
             $fileContents = "@section('content')\n";
             $fileContents .= "<div class=\"toolbar\">\n";
-            $fileContents .= "    <h2>Edit $name</h2>\n";
+            $fileContents .= "    <h2>Edit $nameLower</h2>\n";
             $fileContents .= "</div>\n";
             $fileContents .= "<div class=\"inner-main-content\">\n";
-            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('$namePlural/'.\$".$name."->id) }}\">\n";
+            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('$namePlural/'.\$".$nameLower."->id) }}\">\n";
             $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
             if($propertiesArr)
             {
@@ -302,7 +305,7 @@ class StartCommand extends Command
                     $fileContents .= "    <div class=\"control-group\">\n";
                     $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
                     $fileContents .= "        <div class=\"controls\">\n";
-                    $fileContents .= "            <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$".$name."->$property }}\">\n";
+                    $fileContents .= "            <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$".$nameLower."->$property }}\">\n";
                     $fileContents .= "        </div>\n";
                     $fileContents .= "    </div>\n";
                 }
@@ -311,7 +314,7 @@ class StartCommand extends Command
             $fileContents .= "        <label class=\"control-label\"></label>\n";
             $fileContents .= "        <div class=\"controls\">\n";
             $fileContents .= "            <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
-            $fileContents .= "            <input class=\"btn\" type=\"submit\" value=\"Edit $name\">\n";
+            $fileContents .= "            <input class=\"btn\" type=\"submit\" value=\"Edit $nameLower\">\n";
             $fileContents .= "        </div>\n";
             $fileContents .= "    </div>\n"; 
             $fileContents .= "    </form>\n"; 
@@ -342,13 +345,13 @@ class StartCommand extends Command
             }
             $fileContents .= "</thead>\n";
             $fileContents .= "<tbody>\n";
-            $fileContents .= "@foreach(\$$namePlural as \$$name)\n";
+            $fileContents .= "@foreach(\$$namePlural as \$$nameLower)\n";
             $fileContents .= "\t<tr>\n\t\t";
             if($propertiesArr)
             {
                 foreach($propertiesArr as $property)
                 {
-                    $fileContents .= "<td><a href=\"{{ url('$namePlural"."/'.\$".$name."->id) }}\">{{ \$".$name."->$property }}</a></td>";
+                    $fileContents .= "<td><a href=\"{{ url('$namePlural"."/'.\$".$nameLower."->id) }}\">{{ \$".$nameLower."->$property }}</a></td>";
                 }
             }
             $fileContents .= "\n\t</tr>\n";
@@ -388,7 +391,7 @@ class StartCommand extends Command
             $fileContents .= "        <label class=\"control-label\"></label>\n";
             $fileContents .= "        <div class=\"controls\">\n";
             $fileContents .= "            <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
-            $fileContents .= "            <input class=\"btn\" type=\"submit\" value=\"Add New $name\">\n";
+            $fileContents .= "            <input class=\"btn\" type=\"submit\" value=\"Add New $nameLower\">\n";
             $fileContents .= "        </div>\n";
             $fileContents .= "    </div>\n"; 
             $fileContents .= "</div>\n";
@@ -405,7 +408,7 @@ class StartCommand extends Command
             $fileContents = "\nApp::bind('".$nameUpper."RepositoryInterface','".$nameUpper."Repository');\n";
             $fileContents .= "Route::resource('".$namePlural."', '".$nameUpperPlural. "Controller');\n";
             $content = \File::get($routeFile);
-            if(preg_match("/$name/", $content) !== 1)
+            if(preg_match("/$nameLower/", $content) !== 1)
             {
                 \File::append($routeFile, $fileContents);
             }
@@ -463,7 +466,6 @@ class StartCommand extends Command
 
     /*
     *   Creates the model
-    *   @nameUpper model name
     */
     private function createModel($nameUpper)
     {
@@ -496,6 +498,29 @@ class StartCommand extends Command
         else
         {
             \File::put($fileName, $fileContents);
+        }
+    }
+
+    private function downloadAsset($assetName, $downloadLocation)
+    {
+    	$type = substr(strrchr($downloadLocation, "."), 1);
+
+    	$confirmedAsset = $this->confirm('Do you want '.$assetName.' [y/n]? ', true);
+        if( $confirmedAsset )
+        {
+        	$localLocation = $type . "/" . $assetName . "." . $type;
+            $ch = curl_init();
+            $fp = fopen("public/js/jquery.js", "w");
+
+            curl_setopt($ch, CURLOPT_FILE, $fp);
+            curl_setopt($ch, CURLOPT_HEADER, 0);
+
+            curl_exec($ch);
+            curl_close($ch);
+            fclose($fp);
+
+            $this->fileContents .= "<script src=\"/$type/$assetName.$type\"></script>\n";
+            $this->info("public/$type/$assetName.$type created!");
         }
     }
     
@@ -532,233 +557,153 @@ class StartCommand extends Command
                 $overwrite = $this->confirm('Layout file exists. Overwrite? [y/n]? ', true);
             }
 
-
             if(!\File::exists($layoutPath) || $overwrite)
             {
-                $fileContents = "<!DOCTYPE html>\n";
-                $fileContents .= "<html lang=\"en\">\n";
-                $fileContents .= "<head>\n";
-                $fileContents .= "\t<meta charset=\"utf-8\">\n";
-                $fileContents .= "\t<meta name=\"description\" content=\"\">\n";
-                $fileContents .= "\t<meta name=\"author\" content=\"\">\n";
-                $fileContents .= "\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
-                $fileContents .= "\t<title>Untitled</title>\n";
-                $fileContents .= "<!-- CSS -->\n";
-                $fileContents .= "\t<link rel=\"stylesheet\" href=\"/css/style.css\">\n";
-                $fileContents .= "</head>\n";
-                $fileContents .= "<body>\n";
-                $fileContents .= "\t@yield('content')\n";
+                $this->fileContents = "<!DOCTYPE html>\n";
+                $this->fileContents .= "<html lang=\"en\">\n";
+                $this->fileContents .= "<head>\n";
+                $this->fileContents .= "\t<meta charset=\"utf-8\">\n";
+                $this->fileContents .= "\t<meta name=\"description\" content=\"\">\n";
+                $this->fileContents .= "\t<meta name=\"author\" content=\"\">\n";
+                $this->fileContents .= "\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
+                $this->fileContents .= "\t<title>Untitled</title>\n";
+                $this->fileContents .= "<!-- CSS -->\n";
+                $this->fileContents .= "\t<link rel=\"stylesheet\" href=\"/css/style.css\">\n";
+                $this->fileContents .= "</head>\n";
+                $this->fileContents .= "<body>\n";
+                $this->fileContents .= "\t@yield('content')\n";
 
-                $jquery = $this->confirm('Do you want jquery [y/n]? ', true);
-                if( $jquery )
-                {
-                    $fileContents .= "<script src=\"/js/jquery.js\"></script>\n";
-                    $ch = curl_init("http://code.jquery.com/jquery-1.9.1.min.js");
-                    $fp = fopen("public/js/jquery.js", "w");
+                $this->downloadAsset("jquery", "http://code.jquery.com/jquery-1.9.1.min.js"); 
 
-                    curl_setopt($ch, CURLOPT_FILE, $fp);
-                    curl_setopt($ch, CURLOPT_HEADER, 0);
+                $this->downloadCSSFramework();
 
-                    curl_exec($ch);
-                    curl_close($ch);
-                    fclose($fp);
-                    $this->info("public/js/jquery.js (v1.9.1) created!");
-                }
+                $this->downloadAsset("underscore", "http://underscorejs.org/underscore-min.js"); 
+                $this->downloadAsset("handlebars", "https://raw.github.com/wycats/handlebars.js/1.0.0-rc.3/dist/handlebars.js"); 
+                $this->downloadAsset("angular", "https://ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular.min.js"); 
+                $this->downloadAsset("ember", "https://raw.github.com/emberjs/ember.js/release-builds/ember-1.0.0-rc.1.min.js"); 
+                $this->downloadAsset("backbone", "http://backbonejs.org/backbone-min.js"); 
 
-                $bootstrap = $this->confirm('Do you want twitter bootstrap [y/n]? ', true);
-                if( $bootstrap )
-                {
-                    $ch = curl_init("http://twitter.github.com/bootstrap/assets/bootstrap.zip");
-                    $fp = fopen("public/bootstrap.zip", "w");
-
-                    curl_setopt($ch, CURLOPT_FILE, $fp);
-                    curl_setopt($ch, CURLOPT_HEADER, 0);
-
-                    curl_exec($ch);
-                    curl_close($ch);
-                    fclose($fp);
-
-                    $zip = zip_open("public/bootstrap.zip");
-                    if ($zip) 
-                    {
-                      while ($zip_entry = zip_read($zip)) 
-                      {
-                        $foundationFile = "public/".zip_entry_name($zip_entry);
-                        $foundationDir = dirname($foundationFile);
-
-                        if(!\File::isDirectory($foundationDir))
-                        {
-                            \File::makeDirectory($foundationDir);
-                        }
-                        
-                        if($foundationFile[strlen($foundationFile)-1] == "/")
-                        {
-                            if(!is_dir($foundationDir))
-                                \File::makeDirectory($foundationDir);
-                        }
-                        else
-                        {
-                            $fp = fopen($foundationFile, "w");
-                            if (zip_entry_open($zip, $zip_entry, "r")) 
-                            {
-                              $buf = zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
-                              fwrite($fp,"$buf");
-                              zip_entry_close($zip_entry);
-                              fclose($fp);
-                            }
-                        }
-                      }
-                      zip_close($zip);
-                      \File::delete('public/bootstrap.zip');
-                    }
-
-                    $fileReplace = "\t<link href=\"/bootstrap/css/bootstrap.css\" rel=\"stylesheet\">\n";
-                    $fileReplace .= "\t<style>\n";
-                    $fileReplace .= "\t\tbody {\n";
-                    $fileReplace .= "\t\tpadding-top: 60px;\n";
-                    $fileReplace .= "\t\t}\n";
-                    $fileReplace .= "\t</style>\n";
-                    $fileReplace .= "\t<link href=\"/bootstrap/css/bootstrap-responsive.css\" rel=\"stylesheet\">\n";
-                    $fileContents = preg_replace('/<!-- CSS -->/',  $fileReplace, $fileContents);
-                    $fileContents .= "<script src=\"/js/bootstrap/bootstrap.js\"></script>\n";
-                    $this->info("Bootstrap files loaded to public/bootstrap!");
-                }
-                else
-                {
-                    $foundation = $this->confirm('Do you want foundation [y/n]? ', true);
-                    if( $foundation )
-                    {
-                        $ch = curl_init("http://foundation.zurb.com/files/foundation-4.0.5.zip");
-                        $fp = fopen("public/foundation.zip", "w");
-
-                        curl_setopt($ch, CURLOPT_FILE, $fp);
-                        curl_setopt($ch, CURLOPT_HEADER, 0);
-
-                        curl_exec($ch);
-                        curl_close($ch);
-                        fclose($fp);
-                        $zip = zip_open("public/foundation.zip");
-                        if ($zip) 
-                        {
-                          while ($zip_entry = zip_read($zip)) 
-                          {
-                            $foundationFile = "public/".zip_entry_name($zip_entry);
-                            $foundationDir = dirname($foundationFile);
-                            if(!\File::isDirectory($foundationDir))
-                                \File::makeDirectory($foundationDir);
-
-                            $fp = fopen("public/".zip_entry_name($zip_entry), "w");
-                            if (zip_entry_open($zip, $zip_entry, "r")) 
-                            {
-                              $buf = zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
-                              fwrite($fp,"$buf");
-                              zip_entry_close($zip_entry);
-                              fclose($fp);
-                            }
-                          }
-                          zip_close($zip);
-                            \File::delete('public/index.html');
-                            \File::delete('public/robots.txt');
-                            \File::delete('humans.txt');
-                            \File::delete('foundation.zip');
-                            \File::deleteDirectory('public/js/foundation');
-                            \File::deleteDirectory('public/js/vendor');
-                            \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
-                        }
-                        $fileReplace = "\t<link href=\"/css/foundation.min.css\" rel=\"stylesheet\">\n";
-                        $fileContents = preg_replace('/<!-- CSS -->/', $fileReplace, $fileContents);
-                        $fileContents .= "<script src=\"/js/foundation.js\"></script>\n";
-                        $this->info('Foundation successfully set up (v4.0.5)!');
-                    }
-                }
-
-                $underscore = $this->confirm('Do you want underscore [y/n]? ', true);
-                if( $underscore )
-                {
-                    $ch = curl_init("http://underscorejs.org/underscore-min.js");
-                    $fp = fopen("public/js/underscore.js", "w");
-
-                    curl_setopt($ch, CURLOPT_FILE, $fp);
-                    curl_setopt($ch, CURLOPT_HEADER, 0);
-
-                    curl_exec($ch);
-                    curl_close($ch);
-                    fclose($fp);
-                    $fileContents .= "<script src=\"/js/underscore.js\"></script>\n";
-                    $this->info("public/js/underscore.js created!");
-                }
-
-                $angular = $this->confirm('Do you want angular [y/n]? ', true);
-                if( $angular )
-                {
-                    $ch = curl_init("https://ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular.min.js");
-                    $fp = fopen("public/js/angular.js", "w");
-
-                    curl_setopt($ch, CURLOPT_FILE, $fp);
-                    curl_setopt($ch, CURLOPT_HEADER, 0);
-
-                    curl_exec($ch);
-                    curl_close($ch);
-                    fclose($fp);
-                    $fileContents .= "<script src=\"/js/angular.js\"></script>\n";
-                    $this->info("public/js/angular.js (v1.0.5) created!");
-                }
-                else
-                {
-                    $ember = $this->confirm('Do you want ember [y/n]? ', true);
-                    if( $ember )
-                    {
-                        $ch = curl_init("https://raw.github.com/wycats/handlebars.js/1.0.0-rc.3/dist/handlebars.js");
-                        $fp = fopen("public/js/handlebars.js", "w");
-
-                        curl_setopt($ch, CURLOPT_FILE, $fp);
-                        curl_setopt($ch, CURLOPT_HEADER, 0);
-
-                        curl_exec($ch);
-                        curl_close($ch);
-                        fclose($fp);
-
-                        $ch = curl_init("https://raw.github.com/emberjs/ember.js/release-builds/ember-1.0.0-rc.1.min.js");
-                        $fp = fopen("public/js/ember.js", "w");
-
-                        curl_setopt($ch, CURLOPT_FILE, $fp);
-                        curl_setopt($ch, CURLOPT_HEADER, 0);
-
-                        curl_exec($ch);
-                        curl_close($ch);
-                        fclose($fp);
-
-                        $fileContents .= "<script src=\"/js/handlebars.js\"></script>\n";
-                        $fileContents .= "<script src=\"/js/ember.js\"></script>\n";
-                        $this->info("public/js/ember.js (v1.0.0-rc1) created!");
-                    }
-                    else
-                    {
-                        $backbone = $this->confirm('Do you want backbone [y/n]? ', true);
-                        if( $backbone )
-                        {
-                            $ch = curl_init("http://backbonejs.org/backbone-min.js");
-                            $fp = fopen("public/js/backbone.js", "w");
-
-                            curl_setopt($ch, CURLOPT_FILE, $fp);
-                            curl_setopt($ch, CURLOPT_HEADER, 0);
-
-                            curl_exec($ch);
-                            curl_close($ch);
-                            fclose($fp);
-                            $fileContents .= "<script src=\"/js/backbone.js\"></script>\n";
-                            $this->info("public/js/backbone.js created!");
-                        }
-                    }
-                }
-                $fileContents .= "<script src=\"/js/main.js\"></script>\n";
-                $fileContents .= "</body>\n";
-                $fileContents .= "</html>\n";
-                \File::put($layoutPath, $fileContents);
+                $this->fileContents .= "<script src=\"/js/main.js\"></script>\n";
+                $this->fileContents .= "</body>\n";
+                $this->fileContents .= "</html>\n";
+                \File::put($layoutPath, $this->fileContents);
             }
             else
             {
                 $this->error('Layout file already exists!');
+            }
+        }
+    }
+
+    /*
+    *	Download either bootstrap or foundation
+    */
+    private function downloadCSSFramework()
+    {
+    	$bootstrap = $this->confirm('Do you want twitter bootstrap [y/n]? ', true);
+        if( $bootstrap )
+        {
+            $ch = curl_init("http://twitter.github.com/bootstrap/assets/bootstrap.zip");
+            $fp = fopen("public/bootstrap.zip", "w");
+
+            curl_setopt($ch, CURLOPT_FILE, $fp);
+            curl_setopt($ch, CURLOPT_HEADER, 0);
+
+            curl_exec($ch);
+            curl_close($ch);
+            fclose($fp);
+
+            $zip = zip_open("public/bootstrap.zip");
+            if ($zip) 
+            {
+              while ($zip_entry = zip_read($zip)) 
+              {
+                $foundationFile = "public/".zip_entry_name($zip_entry);
+                $foundationDir = dirname($foundationFile);
+
+                if(!\File::isDirectory($foundationDir))
+                {
+                    \File::makeDirectory($foundationDir);
+                }
+                
+                if($foundationFile[strlen($foundationFile)-1] == "/")
+                {
+                    if(!is_dir($foundationDir))
+                        \File::makeDirectory($foundationDir);
+                }
+                else
+                {
+                    $fp = fopen($foundationFile, "w");
+                    if (zip_entry_open($zip, $zip_entry, "r")) 
+                    {
+                      $buf = zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
+                      fwrite($fp,"$buf");
+                      zip_entry_close($zip_entry);
+                      fclose($fp);
+                    }
+                }
+              }
+              zip_close($zip);
+              \File::delete('public/bootstrap.zip');
+            }
+
+            $fileReplace = "\t<link href=\"/bootstrap/css/bootstrap.css\" rel=\"stylesheet\">\n";
+            $fileReplace .= "\t<style>\n";
+            $fileReplace .= "\t\tbody {\n";
+            $fileReplace .= "\t\tpadding-top: 60px;\n";
+            $fileReplace .= "\t\t}\n";
+            $fileReplace .= "\t</style>\n";
+            $fileReplace .= "\t<link href=\"/bootstrap/css/bootstrap-responsive.css\" rel=\"stylesheet\">\n";
+            $this->fileContents = preg_replace('/<!-- CSS -->/',  $fileReplace, $this->fileContents);
+            $this->fileContents .= "<script src=\"/js/bootstrap/bootstrap.js\"></script>\n";
+            $this->info("Bootstrap files loaded to public/bootstrap!");
+        }
+        else
+        {
+            $foundation = $this->confirm('Do you want foundation [y/n]? ', true);
+            if( $foundation )
+            {
+                $ch = curl_init("http://foundation.zurb.com/files/foundation-4.0.5.zip");
+                $fp = fopen("public/foundation.zip", "w");
+
+                curl_setopt($ch, CURLOPT_FILE, $fp);
+                curl_setopt($ch, CURLOPT_HEADER, 0);
+
+                curl_exec($ch);
+                curl_close($ch);
+                fclose($fp);
+                $zip = zip_open("public/foundation.zip");
+                if ($zip) 
+                {
+                  while ($zip_entry = zip_read($zip)) 
+                  {
+                    $foundationFile = "public/".zip_entry_name($zip_entry);
+                    $foundationDir = dirname($foundationFile);
+                    if(!\File::isDirectory($foundationDir))
+                        \File::makeDirectory($foundationDir);
+
+                    $fp = fopen("public/".zip_entry_name($zip_entry), "w");
+                    if (zip_entry_open($zip, $zip_entry, "r")) 
+                    {
+                      $buf = zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
+                      fwrite($fp,"$buf");
+                      zip_entry_close($zip_entry);
+                      fclose($fp);
+                    }
+                  }
+                  zip_close($zip);
+                    \File::delete('public/index.html');
+                    \File::delete('public/robots.txt');
+                    \File::delete('humans.txt');
+                    \File::delete('foundation.zip');
+                    \File::deleteDirectory('public/js/foundation');
+                    \File::deleteDirectory('public/js/vendor');
+                    \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
+                }
+                $fileReplace = "\t<link href=\"/css/foundation.min.css\" rel=\"stylesheet\">\n";
+                $this->fileContents = preg_replace('/<!-- CSS -->/', $fileReplace, $this->fileContents);
+                $this->fileContents .= "<script src=\"/js/foundation.js\"></script>\n";
+                $this->info('Foundation successfully set up (v4.0.5)!');
             }
         }
     }
