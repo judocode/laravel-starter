@@ -227,7 +227,7 @@ class StartCommand extends Command
             $fileContents .= "    }\n\n";
             $fileContents .= "    public function store()\n";
             $fileContents .= "    {\n";
-            $fileContents .= "        \$this->".$namePlural."->store(Input::only([".$propertiesStr."]));\n";
+            $fileContents .= "        \$this->".$namePlural."->store(Input::only(".$propertiesStr."));\n";
 
             $fileContents .= "        return Redirect::to('$namePlural');\n";
             $fileContents .= "    }\n\n";
