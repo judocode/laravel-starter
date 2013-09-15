@@ -18,10 +18,7 @@
     "autoload": {
         "psr-0": {
             "Ourlearn\\LaravelStarter": "src/"
-        },
-        "classmap": [
-            "src/command"
-        ]
+        }
     },
     "minimum-stability": "dev"
 }
