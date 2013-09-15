@@ -9,16 +9,19 @@
     ],
     "require": {
         "php": ">=5.3.0",
-        "illuminate/support": "4.0.x",
-        "symfony/console": "2.2.*"
+    },
+    "require-dev": {
+        "illuminate/support": "~4",
+        "illuminate/console": "~4",
+        "illuminate/filesystem": "~4"
     },
     "autoload": {
-        "classmap": [
-            "src/command"
-        ],
         "psr-0": {
             "Ourlearn\\LaravelStarter": "src/"
-        }
+        },
+        "classmap": [
+            "src/command"
+        ]
     },
     "minimum-stability": "dev"
 }
