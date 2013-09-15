@@ -1,4 +1,4 @@
-<?php namespace Ourlearn\LaravelStarter\Command;
+<?php namespace Ourlearn\LaravelStarter;
 
 class GenerateMigration {
 
