@@ -1,4 +1,4 @@
-<?php namespace Ourlearn\LaravelStarter;
+<?php namespace Ourlearn\LaravelStarter\Command;
 
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Input\InputOption;

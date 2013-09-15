@@ -1,6 +1,7 @@
 <?php namespace Ourlearn\LaravelStarter;
 
 use Illuminate\Support\ServiceProvider;
+use Ourlearn\LaravelStarter\Command;
 
 class LaravelStarterServiceProvider extends ServiceProvider {
 
