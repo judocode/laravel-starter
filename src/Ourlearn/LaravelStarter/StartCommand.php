@@ -64,6 +64,8 @@ class StartCommand extends Command
             $app = $this->getLaravel();
             $app['composer']->dumpAutoloads();
 
+            $resource = $this->confirm('Do you want resource (y) or restful (n) controllers? ');
+
             /*******************************************************************
             *
             *                       Run #migrations
@@ -139,7 +141,7 @@ class StartCommand extends Command
             if(!\File::isDirectory($repositoryDir))
                 \File::makeDirectory($repositoryDir);
 
-            $fileName = "app/repositories/" . $nameUpper . "RepositoryInterface.php";
+            $fileName = "app/repositories/Eloquent" . $nameUpper . "RepositoryInterface.php";
             $fileContents = "<?php\n\n";
             $fileContents .= "interface ".$nameUpper."RepositoryInterface {\n";
             $fileContents .= "\tpublic function all();\n";
@@ -150,16 +152,22 @@ class StartCommand extends Command
             $fileContents .= "}\n";
             $this->fileExists($fileName, $fileContents);
 
+
             $fileContents = "<?php\n\n";
-            $fileContents .= "class ".$nameUpper."Repository implements ".$nameUpper."RepositoryInterface\n";
-            $fileContents .= "{\n";
+            $fileContents .= "class Eloquent".$nameUpper."Repository implements ".$nameUpper."RepositoryInterface\n";
+            $fileContents .= "{\n\n";
+            $fileContents .= "\tprivate \$$nameLower;";
+            $fileContents .= "\tpublic function _construct($nameUpper \$$nameLower)\n";
+            $fileContents .= "\t{\n";
+            $fileContents .= "\t\t\$this->\$$nameLower = \$$nameLower;\n";
+            $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function all()\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t\treturn ".$nameUpper."::all();\n";
+            $fileContents .= "\t\treturn \$this->".$nameLower."->all();\n";
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function find(\$id)\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t\treturn ".$nameUpper."::find(\$id);\n";
+            $fileContents .= "\t\treturn \$this->".$nameLower."->find(\$id);\n";
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function store(\$input)\n";
             $fileContents .= "\t{\n";
@@ -207,49 +215,109 @@ class StartCommand extends Command
             *                       Create controller
             *
             ********************************************************************/
-            $fileName = "app/controllers/" . $nameUpperPlural . "Controller.php";
+            $fileName = "app/controllers/" . $nameUpper . "Controller.php";
             $fileContents = "<?php\n\n";
-            $fileContents .= "class ".$nameUpperPlural."Controller extends BaseController\n";
+            $fileContents .= "class ".$nameUpper."Controller extends BaseController\n";
             $fileContents .= "{\n";
-            $fileContents .= "\tprotected \$$namePlural;\n\n";
-            $fileContents .= "\tfunction __construct(".$nameUpper."RepositoryInterface \$$namePlural)\n";
+            $fileContents .= "\tprotected \$$nameLower;\n\n";
+            $fileContents .= "\tfunction __construct(".$nameUpper."RepositoryInterface \$$nameLower)\n";
             $fileContents .= "\t{\n";            
-            $fileContents .= "\t\t\$this->$namePlural = \$$namePlural;\n";
+            $fileContents .= "\t\t\$this->$nameLower = \$$nameLower;\n";
             $fileContents .= "\t}\n\n";
-            $fileContents .= "    public function index()\n";
-            $fileContents .= "    {\n";
-            $fileContents .= "    \t\$$namePlural = \$this->".$namePlural."->all();\n";
-            $fileContents .= "        \$this->layout->content = View::make('$namePlural.all', compact('$namePlural'));\n";
-            $fileContents .= "    }\n\n";
-            $fileContents .= "    public function create()\n";
-            $fileContents .= "    {\n";
-            $fileContents .= "        \$this->layout->content = View::make('$namePlural.new');\n";
-            $fileContents .= "    }\n\n";
-            $fileContents .= "    public function store()\n";
-            $fileContents .= "    {\n";
-            $fileContents .= "        \$this->".$namePlural."->store(Input::only(".$propertiesStr."));\n";
+            if($resource)
+            {
+                $fileContents .= "    public function index()\n";
+                $fileContents .= "    {\n";
+                $fileContents .= "    \t\$$namePlural = \$this->".$nameLower."->all();\n";
+                $fileContents .= "        \$this->layout->content = View::make('$nameLower.all', compact('$namePlural'));\n";
+                $fileContents .= "    }\n\n";
+            }
+            else
+            {
+                $fileContents .= "    public function getIndex(\$id = 0)\n";
+                $fileContents .= "    {\n";
+                $fileContents .= "        if(\$id != 0)\n";
+                $fileContents .= "        {\n";
+                $fileContents .= "            \$$nameLower = \$this->".$nameLower."->find(\$id);\n";
+                $fileContents .= "            \$this->layout->content = View::make('$nameLower.view')->with('$nameLower', \$$nameLower);\n";
+                $fileContents .= "            //return Response::json(['$nameLower' => \$$nameLower]);\n";
+                $fileContents .= "        }\n";
+                $fileContents .= "        else\n";
+                $fileContents .= "        {\n";
+                $fileContents .= "        \t\$$namePlural = \$this->".$nameLower."->all();\n";
+                $fileContents .= "        \t\$this->layout->content = View::make('$nameLower.all', compact('$namePlural'));\n";
+                $fileContents .= "        }\n";
+                $fileContents .= "    }\n\n";
+            }
 
-            $fileContents .= "        return Redirect::to('$namePlural');\n";
-            $fileContents .= "    }\n\n";
-            $fileContents .= "    public function show( \$id )\n";
+            if($resource)
+            {
+                $fileContents .= "    public function create()\n";
+            }
+            else
+            {
+                $fileContents .= "    public function getCreate()\n";
+            }
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$nameLower = \$this->".$namePlural."->find(\$id);\n";
-            $fileContents .= "        \$this->layout->content = View::make('$namePlural.view')->with('$nameLower', \$$nameLower);\n";
-            $fileContents .= "        //return Response::json(['$nameLower' => \$$nameLower]);\n";
+            $fileContents .= "        \$this->layout->content = View::make('$nameLower.new');\n";
             $fileContents .= "    }\n\n";
-            $fileContents .= "    public function edit( \$id )\n";
+            if($resource)
+            {
+                $fileContents .= "    public function store()\n";
+            }
+            else
+            {
+                $fileContents .= "    public function postIndex()\n";
+            }
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$nameLower = \$this->".$namePlural."->find(\$id);\n";
-            $fileContents .= "        \$this->layout->content = View::make('$namePlural.edit')->with('$nameLower', \$$nameLower);\n";
+            $fileContents .= "        \$this->".$nameLower."->store(Input::only(".$propertiesStr."));\n";
+
+            $fileContents .= "        return Redirect::to('$nameLower');\n";
             $fileContents .= "    }\n\n";
-            $fileContents .= "    public function update( \$id )\n";
+            if($resource)
+            {
+                $fileContents .= "    public function show( \$id )\n";
+                $fileContents .= "    {\n";
+                $fileContents .= "        \$$nameLower = \$this->".$nameLower."->find(\$id);\n";
+                $fileContents .= "        \$this->layout->content = View::make('$nameLower.view')->with('$nameLower', \$$nameLower);\n";
+                $fileContents .= "        //return Response::json(['$nameLower' => \$$nameLower]);\n";
+                $fileContents .= "    }\n\n";
+            }
+
+            if($resource)
+            {
+                $fileContents .= "    public function edit( \$id )\n";
+            }
+            else
+            {
+                $fileContents .= "    public function getEdit( \$id )\n";
+            }
             $fileContents .= "    {\n";
-            $fileContents .= "        \$$nameLower = \$this->".$namePlural."->update(\$id, Input::only([".$propertiesStr."]));\n";
-            $fileContents .= "        return Redirect::to('$namePlural/'.\$id);\n";
+            $fileContents .= "        \$$nameLower = \$this->".$nameLower."->find(\$id);\n";
+            $fileContents .= "        \$this->layout->content = View::make('$nameLower.edit')->with('$nameLower', \$$nameLower);\n";
             $fileContents .= "    }\n\n";
-            $fileContents .= "    public function destroy( \$id )\n";
+            if($resource)
+            {
+                $fileContents .= "    public function update( \$id )\n";
+            }
+            else
+            {
+                $fileContents .= "    public function putIndex( \$id )\n";
+            }
             $fileContents .= "    {\n";
-            $fileContents .= "        \$this->".$namePlural."->destroy(\$id);\n";
+            $fileContents .= "        \$$nameLower = \$this->".$nameLower."->update(\$id, Input::only([".$propertiesStr."]));\n";
+            $fileContents .= "        return Redirect::to('$nameLower/'.\$id);\n";
+            $fileContents .= "    }\n\n";
+            if($resource)
+            {
+                $fileContents .= "    public function destroy( \$id )\n";
+            }
+            else
+            {
+                $fileContents .= "    public function deleteIndex( \$id )\n";
+            }
+            $fileContents .= "    {\n";
+            $fileContents .= "        \$this->".$nameLower."->destroy(\$id);\n";
             $fileContents .= "    }\n";
             $fileContents .= "}\n";
             $this->fileExists($fileName, $fileContents);
@@ -260,16 +328,16 @@ class StartCommand extends Command
             *                   Create views - view.blade.php
             *
             ********************************************************************/
-            $dir = "app/views/" . $namePlural ."/";
+            $dir = "app/views/" . $nameLower ."/";
             if(!\File::isDirectory($dir))
                 \File::makeDirectory($dir);
             $fileName = $dir . "view.blade.php";
             $fileContents = "@section('content')\n";
             $fileContents .= "<div class=\"toolbar\">\n";
             $fileContents .= "    <h1>Viewing $nameLower</h1>\n";
-            $fileContents .= "    <a class=\"btn\" href=\"{{ url('$namePlural/'.\$".$nameLower."->id.'/edit') }}\">Edit</a>\n";
+            $fileContents .= "    <a class=\"btn\" href=\"{{ url('$nameLower/'.\$".$nameLower."->id.'/edit') }}\">Edit</a>\n";
             $fileContents .= "</div>\n";
-            $fileContents .= "<div class=\"inner-main-content\">\n";
+            $fileContents .= "<div class=\"container\">\n";
             $fileContents .= "    <ul>\n";
             if($propertiesArr)
             {
@@ -294,28 +362,24 @@ class StartCommand extends Command
             $fileContents .= "<div class=\"toolbar\">\n";
             $fileContents .= "    <h2>Edit $nameLower</h2>\n";
             $fileContents .= "</div>\n";
-            $fileContents .= "<div class=\"inner-main-content\">\n";
-            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('$namePlural/'.\$".$nameLower."->id) }}\">\n";
+            $fileContents .= "<div class=\"container\">\n";
+            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('$nameLower/'.\$".$nameLower."->id) }}\">\n";
             $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
             if($propertiesArr)
             {
                 foreach($propertiesArr as $property)
                 {
                     $upper = ucfirst($property);
-                    $fileContents .= "    <div class=\"control-group\">\n";
+                    $fileContents .= "    <div class=\"form-group\">\n";
                     $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
-                    $fileContents .= "        <div class=\"controls\">\n";
-                    $fileContents .= "            <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$".$nameLower."->$property }}\">\n";
-                    $fileContents .= "        </div>\n";
+                    $fileContents .= "        <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$".$nameLower."->$property }}\">\n";
                     $fileContents .= "    </div>\n";
                 }
             }
-            $fileContents .= "    <div class=\"control-group\">\n";
+            $fileContents .= "    <div class=\"form-group\">\n";
             $fileContents .= "        <label class=\"control-label\"></label>\n";
-            $fileContents .= "        <div class=\"controls\">\n";
-            $fileContents .= "            <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
-            $fileContents .= "            <input class=\"btn\" type=\"submit\" value=\"Edit $nameLower\">\n";
-            $fileContents .= "        </div>\n";
+            $fileContents .= "        <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
+            $fileContents .= "        <input class=\"btn\" type=\"submit\" value=\"Edit $nameLower\">\n";
             $fileContents .= "    </div>\n"; 
             $fileContents .= "    </form>\n"; 
             $fileContents .= "</div>\n";
@@ -331,9 +395,9 @@ class StartCommand extends Command
             $fileContents = "@section('content')\n";
             $fileContents .= "<div class=\"toolbar\">\n";
             $fileContents .= "    <h1>All $nameUpperPlural</h1>\n";
-            $fileContents .= "    <a class=\"btn\" href=\"{{ url('$namePlural/create') }}\">New</a>\n";
+            $fileContents .= "    <a class=\"btn\" href=\"{{ url('$nameLower/create') }}\">New</a>\n";
             $fileContents .= "</div>\n";
-            $fileContents .= "<div class=\"inner-main-content\">\n";
+            $fileContents .= "<div class=\"container\">\n";
             $fileContents .= "<table class=\"table\">\n";
             $fileContents .= "<thead>\n";
             if($propertiesArr)
@@ -351,7 +415,7 @@ class StartCommand extends Command
             {
                 foreach($propertiesArr as $property)
                 {
-                    $fileContents .= "<td><a href=\"{{ url('$namePlural"."/'.\$".$nameLower."->id) }}\">{{ \$".$nameLower."->$property }}</a></td>";
+                    $fileContents .= "<td><a href=\"{{ url('$nameLower"."/'.\$".$nameLower."->id) }}\">{{ \$".$nameLower."->$property }}</a></td>";
                 }
             }
             $fileContents .= "\n\t</tr>\n";
@@ -372,27 +436,23 @@ class StartCommand extends Command
             $fileContents .= "<div class=\"toolbar\">\n";
             $fileContents .= "    <h2>New $nameUpper</h2>\n";
             $fileContents .= "</div>\n";
-            $fileContents .= "<div class=\"inner-main-content\">\n";
-            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('$namePlural') }}\">\n";
+            $fileContents .= "<div class=\"container\">\n";
+            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('$nameLower') }}\">\n";
             if($propertiesArr)
             {
                 foreach($propertiesArr as $property)
                 {
                     $upper = ucfirst($property);
-                    $fileContents .= "    <div class=\"control-group\">\n";
+                    $fileContents .= "    <div class=\"form-group\">\n";
                     $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
-                    $fileContents .= "        <div class=\"controls\">\n";
-                    $fileContents .= "            <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\">\n";
-                    $fileContents .= "        </div>\n";
+                    $fileContents .= "        <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\">\n";
                     $fileContents .= "    </div>\n";
                 }
             }
-            $fileContents .= "    <div class=\"control-group\">\n";
+            $fileContents .= "    <div class=\"form-group\">\n";
             $fileContents .= "        <label class=\"control-label\"></label>\n";
-            $fileContents .= "        <div class=\"controls\">\n";
-            $fileContents .= "            <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
-            $fileContents .= "            <input class=\"btn\" type=\"submit\" value=\"Add New $nameLower\">\n";
-            $fileContents .= "        </div>\n";
+            $fileContents .= "        <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
+            $fileContents .= "        <input class=\"btn\" type=\"submit\" value=\"Add New $nameLower\">\n";
             $fileContents .= "    </div>\n"; 
             $fileContents .= "</div>\n";
             $fileContents .= "@stop\n";     
@@ -405,8 +465,16 @@ class StartCommand extends Command
             *
             ********************************************************************/
             $routeFile = "app/routes.php";
-            $fileContents = "\nApp::bind('".$nameUpper."RepositoryInterface','".$nameUpper."Repository');\n";
-            $fileContents .= "Route::resource('".$namePlural."', '".$nameUpperPlural. "Controller');\n";
+            $fileContents = "\nApp::bind('".$nameUpper."RepositoryInterface','Eloquent".$nameUpper."Repository');\n";
+            if($resource)
+            {
+                $fileContents .= "Route::resource('".$nameLower."', '".$nameUpperPlural. "Controller');\n";
+            }
+            else
+            {
+                $fileContents .= "Route::controller('".$nameLower."', '".$nameUpperPlural. "Controller');\n";
+            }
+
             $content = \File::get($routeFile);
             if(preg_match("/$nameLower/", $content) !== 1)
             {
@@ -428,22 +496,22 @@ class StartCommand extends Command
             $fileContents .= "class ". $nameUpperPlural ."ControllerTest extends TestCase {\n";
             $fileContents .= "\tpublic function testIndex()\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t    \$response = \$this->call('GET', '$namePlural');\n";
+            $fileContents .= "\t    \$response = \$this->call('GET', '$nameLower');\n";
             $fileContents .= "\t    \$this->assertTrue(\$response->isOk());\n";
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function testShow()\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t    \$response = \$this->call('GET', '$namePlural/1');\n";
+            $fileContents .= "\t    \$response = \$this->call('GET', '$nameLower/1');\n";
             $fileContents .= "\t    \$this->assertTrue(\$response->isOk());\n";
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function testCreate()\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t    \$response = \$this->call('GET', '$namePlural/create');\n";
+            $fileContents .= "\t    \$response = \$this->call('GET', '$nameLower/create');\n";
             $fileContents .= "\t    \$this->assertTrue(\$response->isOk());\n";
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function testEdit()\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t    \$response = \$this->call('GET', '$namePlural/1/edit');\n";
+            $fileContents .= "\t    \$response = \$this->call('GET', '$nameLower/1/edit');\n";
             $fileContents .= "\t    \$this->assertTrue(\$response->isOk());\n";
             $fileContents .= "\t}\n";
             $fileContents .= "}\n";
