@@ -23,6 +23,15 @@ class StartCommand extends Command
         $this->generateLayoutFiles();
 
         $moreTables = $this->confirm('Do you want to add more tables [y/n]? ', true);
+
+        $isNamespaced = $this->confirm('Do you want to apply namespacing? ');
+
+        $namespace = "";
+
+        if($isNamespaced)
+        {
+            $namespace = $this->ask('Please provide the full namespace (eg "Illuminate\Foundation"): ');
+        }
         
         while( $moreTables )
         {
@@ -31,7 +40,7 @@ class StartCommand extends Command
 	        $nameUpper = ucfirst($nameLower);
 	        $nameUpperPlural = str_plural($nameUpper);
 
-            $this->createModel($nameUpper);
+            $this->createModel($nameUpper, $namespace);
 
             $propertiesArr = array();
             $propertiesStr = "";
@@ -142,7 +151,15 @@ class StartCommand extends Command
                 \File::makeDirectory($repositoryDir);
 
             $fileName = "app/repositories/" . $nameUpper . "RepositoryInterface.php";
-            $fileContents = "<?php\n\n";
+            if($isNamespaced)
+            {
+                $fileContents = "<?php namespace $namespace;\n\n";
+            }
+            else
+            {
+                $fileContents = "<?php\n\n";
+            }
+
             $fileContents .= "interface ".$nameUpper."RepositoryInterface {\n";
             $fileContents .= "\tpublic function all();\n";
             $fileContents .= "\tpublic function find(\$id);\n";
@@ -153,7 +170,14 @@ class StartCommand extends Command
             $this->fileExists($fileName, $fileContents);
 
 
-            $fileContents = "<?php\n\n";
+            if($isNamespaced)
+            {
+                $fileContents = "<?php namespace $namespace;\n\n";
+            }
+            else
+            {
+                $fileContents = "<?php\n\n";
+            }
             $fileContents .= "class Eloquent".$nameUpper."Repository implements ".$nameUpper."RepositoryInterface\n";
             $fileContents .= "{\n";
             $fileContents .= "\tprivate \$$nameLower;\n\n";
@@ -216,7 +240,14 @@ class StartCommand extends Command
             *
             ********************************************************************/
             $fileName = "app/controllers/" . $nameUpper . "Controller.php";
-            $fileContents = "<?php\n\n";
+            if($isNamespaced)
+            {
+                $fileContents = "<?php namespace $namespace;\n\n";
+            }
+            else
+            {
+                $fileContents = "<?php\n\n";
+            }
             $fileContents .= "class ".$nameUpper."Controller extends BaseController\n";
             $fileContents .= "{\n";
             $fileContents .= "\tprotected \$$nameLower;\n\n";
@@ -333,7 +364,7 @@ class StartCommand extends Command
                 \File::makeDirectory($dir);
             $fileName = $dir . "view.blade.php";
             $fileContents = "@section('content')\n";
-            $fileContents .= "<div class=\"toolbar\">\n";
+            $fileContents .= "<div class=\"row\">\n";
             $fileContents .= "    <h1>Viewing $nameLower</h1>\n";
             $fileContents .= "    <a class=\"btn\" href=\"{{ url('$nameLower/'.\$".$nameLower."->id.'/edit') }}\">Edit</a>\n";
             $fileContents .= "</div>\n";
@@ -359,7 +390,7 @@ class StartCommand extends Command
             ********************************************************************/
             $fileName = $dir . "edit.blade.php";
             $fileContents = "@section('content')\n";
-            $fileContents .= "<div class=\"toolbar\">\n";
+            $fileContents .= "<div class=\"row\">\n";
             $fileContents .= "    <h2>Edit $nameLower</h2>\n";
             $fileContents .= "</div>\n";
             $fileContents .= "<div class=\"container\">\n";
@@ -393,7 +424,7 @@ class StartCommand extends Command
             ********************************************************************/
             $fileName = $dir . "all.blade.php";
             $fileContents = "@section('content')\n";
-            $fileContents .= "<div class=\"toolbar\">\n";
+            $fileContents .= "<div class=\"row\">\n";
             $fileContents .= "    <h1>All $nameUpperPlural</h1>\n";
             $fileContents .= "    <a class=\"btn\" href=\"{{ url('$nameLower/create') }}\">New</a>\n";
             $fileContents .= "</div>\n";
@@ -433,7 +464,7 @@ class StartCommand extends Command
             ********************************************************************/
             $fileName = $dir . "new.blade.php";
             $fileContents = "@section('content')\n";
-            $fileContents .= "<div class=\"toolbar\">\n";
+            $fileContents .= "<div class=\"row\">\n";
             $fileContents .= "    <h2>New $nameUpper</h2>\n";
             $fileContents .= "</div>\n";
             $fileContents .= "<div class=\"container\">\n";
@@ -535,10 +566,17 @@ class StartCommand extends Command
     /*
     *   Creates the model
     */
-    private function createModel($nameUpper)
+    private function createModel($nameUpper, $namespace)
     {
         $fileName = "app/models/" . $nameUpper . ".php";
-        $fileContents = "<?php\n\n";
+        if($namespace)
+        {
+            $fileContents = "<?php namespace $namespace;\n\n";
+        }
+        else
+        {
+            $fileContents = "<?php\n\n";
+        }
         $fileContents .= "use LaravelBook\Ardent\Ardent;\n\n";
         $fileContents .= "class " . $nameUpper . " extends Ardent {\n\n";
         $fileContents .= "\tpublic static \$rules = array(\n";
@@ -576,9 +614,17 @@ class StartCommand extends Command
     	$confirmedAsset = $this->confirm('Do you want '.$assetName.' [y/n]? ', true);
         if( $confirmedAsset )
         {
-        	$localLocation = $type . "/" . $assetName . "." . $type;
-            $ch = curl_init();
-            $fp = fopen("public/js/jquery.js", "w");
+            if($assetName == "jquery")
+            {
+                $version = $this->confirm("Do you want v1.11 (y) or 2.1 (n)? ");
+                if(!$version)
+                {
+                    $downloadLocation = "http://code.jquery.com/jquery-2.1.0.min.js";
+                }
+            }
+        	$localLocation = "public/" . $type . "/" . $assetName . "." . $type;
+            $ch = curl_init($downloadLocation);
+            $fp = fopen($localLocation, "w");
 
             curl_setopt($ch, CURLOPT_FILE, $fp);
             curl_setopt($ch, CURLOPT_HEADER, 0);
@@ -641,13 +687,13 @@ class StartCommand extends Command
                 $this->fileContents .= "<body>\n";
                 $this->fileContents .= "\t@yield('content')\n";
 
-                $this->downloadAsset("jquery", "http://code.jquery.com/jquery-1.9.1.min.js"); 
+                $this->downloadAsset("jquery", "http://code.jquery.com/jquery-1.11.0.min.js");
 
                 $this->downloadCSSFramework();
 
                 $this->downloadAsset("underscore", "http://underscorejs.org/underscore-min.js"); 
-                $this->downloadAsset("handlebars", "https://raw.github.com/wycats/handlebars.js/1.0.0-rc.3/dist/handlebars.js"); 
-                $this->downloadAsset("angular", "https://ajax.googleapis.com/ajax/libs/angularjs/1.0.5/angular.min.js"); 
+                $this->downloadAsset("handlebars", "http://builds.emberjs.com/tags/v1.3.2/ember.min.js");
+                $this->downloadAsset("angular", "https://ajax.googleapis.com/ajax/libs/angularjs/1.2.12/angular.min.js");
                 $this->downloadAsset("ember", "https://raw.github.com/emberjs/ember.js/release-builds/ember-1.0.0-rc.1.min.js"); 
                 $this->downloadAsset("backbone", "http://backbonejs.org/backbone-min.js"); 
 
@@ -671,7 +717,7 @@ class StartCommand extends Command
     	$bootstrap = $this->confirm('Do you want twitter bootstrap [y/n]? ', true);
         if( $bootstrap )
         {
-            $ch = curl_init("http://twitter.github.com/bootstrap/assets/bootstrap.zip");
+            $ch = curl_init("https://github.com/twbs/bootstrap/releases/download/v3.1.0/bootstrap-3.1.0-dist.zip");
             $fp = fopen("public/bootstrap.zip", "w");
 
             curl_setopt($ch, CURLOPT_FILE, $fp);
@@ -731,7 +777,7 @@ class StartCommand extends Command
             $foundation = $this->confirm('Do you want foundation [y/n]? ', true);
             if( $foundation )
             {
-                $ch = curl_init("http://foundation.zurb.com/files/foundation-4.0.5.zip");
+                $ch = curl_init("http://foundation.zurb.com/cdn/releases/foundation-5.1.1.zip");
                 $fp = fopen("public/foundation.zip", "w");
 
                 curl_setopt($ch, CURLOPT_FILE, $fp);
