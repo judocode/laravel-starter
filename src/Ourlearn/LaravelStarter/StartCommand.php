@@ -141,7 +141,7 @@ class StartCommand extends Command
             if(!\File::isDirectory($repositoryDir))
                 \File::makeDirectory($repositoryDir);
 
-            $fileName = "app/repositories/Eloquent" . $nameUpper . "RepositoryInterface.php";
+            $fileName = "app/repositories/" . $nameUpper . "RepositoryInterface.php";
             $fileContents = "<?php\n\n";
             $fileContents .= "interface ".$nameUpper."RepositoryInterface {\n";
             $fileContents .= "\tpublic function all();\n";
@@ -155,11 +155,11 @@ class StartCommand extends Command
 
             $fileContents = "<?php\n\n";
             $fileContents .= "class Eloquent".$nameUpper."Repository implements ".$nameUpper."RepositoryInterface\n";
-            $fileContents .= "{\n\n";
-            $fileContents .= "\tprivate \$$nameLower;";
-            $fileContents .= "\tpublic function _construct($nameUpper \$$nameLower)\n";
+            $fileContents .= "{\n";
+            $fileContents .= "\tprivate \$$nameLower;\n\n";
+            $fileContents .= "\tpublic function __construct($nameUpper \$$nameLower)\n";
             $fileContents .= "\t{\n";
-            $fileContents .= "\t\t\$this->\$$nameLower = \$$nameLower;\n";
+            $fileContents .= "\t\t\$this->$nameLower = \$$nameLower;\n";
             $fileContents .= "\t}\n\n";
             $fileContents .= "\tpublic function all()\n";
             $fileContents .= "\t{\n";
@@ -199,7 +199,7 @@ class StartCommand extends Command
             $fileContents .= "\t}\n";
             $fileContents .= "}\n";
 
-            $this->fileExists('app/repositories/'.$nameUpper.'Repository.php', $fileContents);
+            $this->fileExists('app/repositories/Eloquent'.$nameUpper.'Repository.php', $fileContents);
 
             $content = \File::get('app/start/global.php');
             if(preg_match("/repositories/", $content) !== 1)
@@ -468,11 +468,11 @@ class StartCommand extends Command
             $fileContents = "\nApp::bind('".$nameUpper."RepositoryInterface','Eloquent".$nameUpper."Repository');\n";
             if($resource)
             {
-                $fileContents .= "Route::resource('".$nameLower."', '".$nameUpperPlural. "Controller');\n";
+                $fileContents .= "Route::resource('".$nameLower."', '".$nameUpper. "Controller');\n";
             }
             else
             {
-                $fileContents .= "Route::controller('".$nameLower."', '".$nameUpperPlural. "Controller');\n";
+                $fileContents .= "Route::controller('".$nameLower."', '".$nameUpper. "Controller');\n";
             }
 
             $content = \File::get($routeFile);
