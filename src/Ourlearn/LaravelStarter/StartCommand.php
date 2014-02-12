@@ -229,6 +229,10 @@ class StartCommand extends Command
             if(preg_match("/repositories/", $content) !== 1)
                 $content = preg_replace("/app_path\(\).'\/controllers',/", "app_path().'/controllers',\n\tapp_path().'/repositories',", $content);
 
+            $content = \File::get('composer.json');
+            if(preg_match("/repositories/", $content) !== 1)
+                $content = preg_replace("/\"app/controllers\",/", "\"app/controllers\",\n\t\t\t\"app/repositories\",", $content);
+
             \File::put('app/start/global.php', $content);
 
             $this->info($nameUpper.'Repository created!');
