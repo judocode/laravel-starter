@@ -231,7 +231,7 @@ class StartCommand extends Command
 
             $content = \File::get('composer.json');
             if(preg_match("/repositories/", $content) !== 1)
-                $content = preg_replace("/\"app/controllers\",/", "\"app/controllers\",\n\t\t\t\"app/repositories\",", $content);
+                $content = preg_replace("/\"app\/controllers\",/", "\"app/controllers\",\n\t\t\t\"app/repositories\",", $content);
 
             \File::put('app/start/global.php', $content);
 
