@@ -26,6 +26,6 @@ That's it! You're all set to go. Run the `artisan` command from the Terminal to 
 
 Run `php artisan start` and the guided setup will help you with the rest!
 
-## Additional Notes
+## Future ideas
 
-Please let me know if you have features you would like to add
+- Automatically create js file based on js framework that is specified.
