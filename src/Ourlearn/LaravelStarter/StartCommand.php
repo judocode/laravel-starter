@@ -296,7 +296,7 @@ class StartCommand extends Command
         $functions = array();
 
         $functionContents = "\t\t\$this->" . $this->className['lower'] . " = \$" . $this->className['lower'] . ";\n";
-        array_push($functions, ['name' => '__construct', 'content' => $functionContents]);
+        array_push($functions, ['name' => '__construct', 'content' => $functionContents, 'args' => $this->className['upper'] . " \$" . $this->className['lower']]);
         $functionContents = "\t\treturn \$this->" . $this->className['lower'] . "->all();\n";
         array_push($functions, ['name' => 'all', 'content' => $functionContents]);
         $functionContents = "\t\treturn \$this->" . $this->className['lower'] . "->find(\$id);\n";
@@ -314,12 +314,12 @@ class StartCommand extends Command
         $functionContents .= "        \$" . $this->className['lower'] . "->save();\n";
         array_push($functions, ['name' => 'update', 'content' => $functionContents, 'args' => "\$id, \$input"]);
         $functionContents = "\t\t\$this->find(\$id)->delete();\n";
-        array_push($functions, ['name' => 'delete', 'content' => $functionContents, 'args' => "\$id"]);
+        array_push($functions, ['name' => 'destroy', 'content' => $functionContents, 'args' => "\$id"]);
 
         $fileContents = $this->createFunctions($functions);
 
         $fileName = 'app/repositories/Eloquent' . $this->className['upper'] . 'Repository.php';
-        $vars = ["private", $this->className['lower']];
+        $vars = ["private" => $this->className['lower']];
         $extends = ['type' => 'implements', "name"=>$this->className['upper'] . "RepositoryInterface"];
 
         $this->createClass($fileName, $fileContents, $extends, $vars);
@@ -423,15 +423,15 @@ class StartCommand extends Command
 
         $getPath = $this->isResource ? "" : "details/";
 
-        $functionContents = "\t\t\$response = \$this->call('GET', '" . $this->className['lower'] . "/" . $getPath . "1');\n";
+        $functionContents = "\t\t\$this->call('GET', '" . $this->className['lower'] . "/" . $getPath . "1');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testShow', 'content' => $functionContents]);
 
-        $functionContents = "\t\t\$response = \$this->call('GET', '" . $this->className['lower'] . "/create');\n";
+        $functionContents = "\t\t\$this->call('GET', '" . $this->className['lower'] . "/create');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testCreate', 'content' => $functionContents]);
 
-        $functionContents = "\t\t\$response = \$this->call('GET', '" . $this->className['lower'] . "/edit/1');\n";
+        $functionContents = "\t\t\$this->call('GET', '" . $this->className['lower'] . "/edit/1');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testEdit', 'content' => $functionContents]);
 
