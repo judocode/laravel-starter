@@ -4,11 +4,9 @@ Automatically generates the files you need to get up and running. Generates a de
 
 ## Installation
 
-Begin by installing this package through Composer. Edit your project's `composer.json` file to require `ourlearn/laravel-starter` as well as `laravelbook/ardent` (optional - great for easier validation)
+Begin by installing this package through Composer. Edit your project's `composer.json` file to require `ourlearn/laravel-starter`
 
-    "require": {
-		"laravel/framework": "4.0.*",
-		"laravelbook/ardent": "dev-master",
+    "require-dev": {
 		"ourlearn/laravel-starter": "dev-master"
 	}
 
@@ -30,4 +28,4 @@ Run `php artisan start` and the guided setup will help you with the rest!
 
 ## Additional Notes
 
-This is a very opinionated package and it is still being developed.
+Please let me know if you have features you would like to add
