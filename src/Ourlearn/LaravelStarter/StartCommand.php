@@ -44,9 +44,6 @@ class StartCommand extends Command
             $this->namespace = substr($modelWithNamespace, 0, strrpos($modelWithNamespace, "\\"));
 
             $this->className['lower'] = strtolower($model);
-
-            //$this->className['lower'] = strtolower($this->ask('Model/table name? '));
-
             $this->className['plural'] = str_plural($this->className['lower']);
             $this->className['upper'] = ucfirst($this->className['lower']);
 
@@ -82,9 +79,6 @@ class StartCommand extends Command
             else
                 $file = new GenerateMigration($this->className['lower']);
 
-            $app = $this->getLaravel();
-            $app['composer']->dumpAutoloads();
-
             $this->isResource = $this->confirm('Do you want resource (y) or restful (n) controllers? ');
 
             $this->runMigrations();
@@ -113,6 +107,9 @@ class StartCommand extends Command
             $modelAndFields = $this->ask('Add model with fields or "q" to quit (eg. MyNamespace\Book title:string year:integer) ');
             $moreTables = $modelAndFields == "q" ? false : true;
         }
+
+        $app = $this->getLaravel();
+        $app['composer']->dumpAutoloads();
 
         $this->info('Done!');
     }
@@ -620,6 +617,8 @@ class StartCommand extends Command
 
             curl_setopt($ch, CURLOPT_FILE, $fp);
             curl_setopt($ch, CURLOPT_HEADER, 0);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
             curl_exec($ch);
             curl_close($ch);
@@ -686,9 +685,9 @@ class StartCommand extends Command
                 $this->downloadCSSFramework();
 
                 $this->downloadAsset("underscore", "http://underscorejs.org/underscore-min.js");
-                $this->downloadAsset("handlebars", "http://builds.emberjs.com/tags/v1.3.2/ember.min.js");
+                $this->downloadAsset("handlebars", "http://builds.handlebarsjs.com.s3.amazonaws.com/handlebars-v1.3.0.js");
                 $this->downloadAsset("angular", "https://ajax.googleapis.com/ajax/libs/angularjs/1.2.12/angular.min.js");
-                $this->downloadAsset("ember", "https://raw.github.com/emberjs/ember.js/release-builds/ember-1.0.0-rc.1.min.js");
+                $this->downloadAsset("ember", "http://builds.emberjs.com/tags/v1.4.0/ember.min.js");
                 $this->downloadAsset("backbone", "http://backbonejs.org/backbone-min.js");
 
                 $this->fileContents .= "<script src=\"/js/main.js\"></script>\n";
@@ -716,6 +715,8 @@ class StartCommand extends Command
 
             curl_setopt($ch, CURLOPT_FILE, $fp);
             curl_setopt($ch, CURLOPT_HEADER, 0);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
             curl_exec($ch);
             curl_close($ch);
@@ -755,15 +756,15 @@ class StartCommand extends Command
                 \File::delete('public/bootstrap.zip');
             }
 
-            $fileReplace = "\t<link href=\"/bootstrap/css/bootstrap.css\" rel=\"stylesheet\">\n";
+            $fileReplace = "\t<link href=\"{{ url('dist/css/bootstrap.min.css') }}\" rel=\"stylesheet\">\n";
             $fileReplace .= "\t<style>\n";
             $fileReplace .= "\t\tbody {\n";
             $fileReplace .= "\t\tpadding-top: 60px;\n";
             $fileReplace .= "\t\t}\n";
             $fileReplace .= "\t</style>\n";
-            $fileReplace .= "\t<link href=\"/bootstrap/css/bootstrap-responsive.css\" rel=\"stylesheet\">\n";
+            $fileReplace .= "\t<link href=\"{{ url('dist/css/bootstrap-theme.min.css') }}\" rel=\"stylesheet\">\n";
             $this->fileContents = preg_replace('/<!-- CSS -->/',  $fileReplace, $this->fileContents);
-            $this->fileContents .= "<script src=\"/js/bootstrap/bootstrap.js\"></script>\n";
+            $this->fileContents .= "<script src=\"{{ url('dist/js/bootstrap.min.js') }}\"></script>\n";
             $this->info("Bootstrap files loaded to public/bootstrap!");
         }
         else
@@ -776,6 +777,8 @@ class StartCommand extends Command
 
                 curl_setopt($ch, CURLOPT_FILE, $fp);
                 curl_setopt($ch, CURLOPT_HEADER, 0);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
                 curl_exec($ch);
                 curl_close($ch);
@@ -808,9 +811,9 @@ class StartCommand extends Command
                     \File::deleteDirectory('public/js/vendor');
                     \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
                 }
-                $fileReplace = "\t<link href=\"/css/foundation.min.css\" rel=\"stylesheet\">\n";
+                $fileReplace = "\t<link href=\"{{ url ('css/foundation.min.css') }}\" rel=\"stylesheet\">\n";
                 $this->fileContents = preg_replace('/<!-- CSS -->/', $fileReplace, $this->fileContents);
-                $this->fileContents .= "<script src=\"/js/foundation.js\"></script>\n";
+                $this->fileContents .= "<script src=\"{{ url ('/js/foundation.js') }}\"></script>\n";
                 $this->info('Foundation successfully set up (v4.0.5)!');
             }
         }
