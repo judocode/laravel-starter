@@ -7,14 +7,15 @@ use Symfony\Component\Console\Input\InputArgument;
 class StartCommand extends Command
 {
     protected $name = 'start';
-    private $propertiesArr = array();
-    private $propertiesStr = array();
-    private $className = array();
-    private $namespace;
-    private $isResource;
-
     protected $description = "Makes table, controller, model, views, seeds, and repository";
 
+    private $propertiesArr = array();
+    private $propertiesStr = "";
+    private $model;
+    private $relationship = array();
+    private $namespace;
+    private $isResource;
+    private $fieldNames;
     private $fileContents;
 
     public function __construct()
@@ -43,13 +44,7 @@ class StartCommand extends Command
 
             $this->namespace = substr($modelWithNamespace, 0, strrpos($modelWithNamespace, "\\"));
 
-            $this->className['lower'] = strtolower($model);
-            $this->className['plural'] = str_plural($this->className['lower']);
-            $this->className['upper'] = ucfirst($this->className['lower']);
-
-            $this->className['upperPlural'] = str_plural($this->className['upper']);
-
-            $this->createModel();
+            $this->model = new Model($model, $this->namespace);
 
             $this->propertiesArr = array();
             $this->propertiesStr = "";
@@ -59,10 +54,19 @@ class StartCommand extends Command
 
             if( $additionalFields )
             {
-                $fieldNames = $values;
-                $file = new GenerateMigration($this->className['lower'], $fieldNames);
+                if(!strpos($values[1], ":")) {
+                    $relationship = $values[1];
+                    $relatedTable = $values[2];
 
-                foreach($fieldNames as $field)
+                    $this->relationship = array(new Relation($relationship, new Model($relatedTable)));
+
+                    unset($values[1]);
+                    unset($values[2]);
+                }
+
+                $this->fieldNames = $values;
+
+                foreach($this->fieldNames as $field)
                 {
                     $pos = strrpos($field, ":");
                     if ($pos !== false)
@@ -76,10 +80,12 @@ class StartCommand extends Command
 
                 $this->propertiesStr = substr($this->propertiesStr, 0, strlen($this->propertiesStr)-1);
             }
-            else
-                $file = new GenerateMigration($this->className['lower']);
+
+            $this->createModel();
 
             $this->isResource = $this->confirm('Do you want resource (y) or restful (n) controllers? ');
+
+            $this->createMigrations();
 
             $this->runMigrations();
 
@@ -108,8 +114,10 @@ class StartCommand extends Command
             $moreTables = $modelAndFields == "q" ? false : true;
         }
 
-        $app = $this->getLaravel();
-        $app['composer']->dumpAutoloads();
+        $this->info('Please wait a few moments...');
+
+        $this->call('clear-compiled');
+        $this->call('optimize');
 
         $this->info('Done!');
     }
@@ -121,126 +129,127 @@ class StartCommand extends Command
         );
     }
 
-    /*
-    *   Creates the model
-    */
-    private function createModel()
+    private function createMigrations()
     {
-        $fileName = "app/models/" . $this->className['upper'] . ".php";
-        $this->createClass($fileName, "", ["name" => "\\Eloquent"]);
+        $tableName = $this->model->plural();
 
-        $this->info('Model "'.$this->className['upper'].'" created!');
+        $createTable = "create_" . $tableName . "_table";
+
+        $migrationFile = \App::make('Illuminate\Database\Migrations\MigrationCreator')->create($createTable, "app/database/migrations", $tableName, true);
+
+        $functionContents = $this->migrationUp();
+        $fileContents = $this->createFunction("up", $functionContents);
+
+        $functionContents = "\t\tSchema::dropIfExists('".$this->model->plural()."');\n";
+        $fileContents .= $this->createFunction("down", $functionContents);
+
+        $this->createMigrationClass($migrationFile, $fileContents, $this->model->upperPlural());
     }
 
-    private function createSeeds()
+    protected function migrationUp()
     {
-        $functionContent = "\t\t\$".$this->className['plural']." = array(\n";
+        $content = "\t\tSchema::create('".$this->model->plural()."', function(Blueprint \$table) {\n";
+        $content .= "\t\t\t" . $this->setColumn('increments', 'id') . ";\n";
+        $content .= $this->addColumns();
+        $content .= "\t\t\t" . $this->setColumn('timestamps', null) . ";\n";
+        $content .= $this->addForeignKeys();
+        $content .= "\t\t});\n";
 
-        foreach($this->propertiesArr as $property) {
-            $functionContent .= "\t\t\t'$property' => 'Testing ".$this->className['lower']. $property."',\n";
-        }
-        $functionContent .= "\t\t);\n";
-        $functionContent .= "\t\tDB::table('".$this->className['plural']."')->insert(\$".$this->className['plural'].");\n";
+        foreach($this->relationship as $relation) {
+            if($relation->getType() == "belongsToMany") {
 
-        $fileContents = $this->createFunction("run", $functionContent);
+                $tableOne = $this->model->lower();
+                $tableTwo = $relation->model->lower();
 
-        $fileName = "app/database/seeds/" . $this->className['upperPlural'] . "TableSeeder.php";
-        $this->createClass($fileName, $fileContents, ['name' => 'Seeder']);
+                if($tableOne[0] > $tableTwo[0])
+                    $tableName = $tableTwo ."_".$tableOne;
+                else
+                    $tableName = $tableOne ."_".$tableTwo;
 
-        $databaseSeederPath = app_path() . '/database/seeds/DatabaseSeeder.php';
-        $tableSeederClassName = $this->className['upperPlural'] . 'TableSeeder';
-
-        $content = \File::get($databaseSeederPath);
-        if(preg_match("/$tableSeederClassName/", $content) !== 1)
-        {
-            $content = preg_replace("/(run\(\).+?)}/us", "$1\t\$this->call('{$tableSeederClassName}');\n\t}", $content);
-            \File::put($databaseSeederPath, $content);
-        }
-
-        $this->info('Database seed file created!');
-    }
-
-    private function createFunction($name, $content, $args = "", $type = "public")
-    {
-        $fileContents = "\t$type function $name($args)\n";
-        $fileContents .= "\t{\n";
-        $fileContents .= $content;
-        $fileContents .= "\t}\n\n";
-
-        return $fileContents;
-    }
-
-    private function createInterface($path, $content)
-    {
-        $this->createClass($path, $content, array(), array(), array(), "interface");
-    }
-
-    //private function createClassWithVars()
-
-    private function createClass($path, $content, array $extends = array(), $vars = array(), array $uses = array(), $type = "class")
-    {
-        $usesOutput = "";
-        $extendsOutput = "";
-
-        $fileName = substr(strrchr($path, "/"), 1);
-
-        $className = substr($fileName, 0, strrpos($fileName, "."));
-
-        if($this->namespace)
-            $this->namespace = "namespace " . $this->namespace . ";";
-
-        if($uses) {
-            foreach($uses as $use) {
-                $usesOutput .= "use $use;\n";
+                $content .= "\t\tif(!Schema::hasTable('".$tableName."')) {\n";
+                $content .= "\t\t\tSchema::create('".$tableName."', function(Blueprint \$table) {\n";
+                $content .= "\t\t\t\t\$table->integer('".$tableOne."_id')->unsigned();\n";
+                $content .= "\t\t\t\t\$table->integer('".$tableTwo."_id')->unsigned();\n";
+                $content .= "\t\t\t});\n";
+                $content .= "\t\t}\n";
+            } else if($relation->getType() == "hasOne" || $relation->getType() == "hasMany") {
+                $content .= "\t\tif(Schema::hasColumn('".$relation->model->plural()."','".$this->model->lower()."_id')) {\n";
+                $content .= "\t\t\tSchema::table('".$relation->model->plural()."', function(Blueprint \$table) {\n";
+                $content .= "\t\t\t\t\$table->foreign('". $this->model->lower()."_id')->references('id')->on('".$this->model->plural()."');\n";
+                $content .= "\t\t\t});\n";
+                $content .= "\t\t}\n";
             }
-            $usesOutput .= "\n";
         }
+        return $content;
+    }
 
-        if($extends) {
-            $extendName = "extends";
-            if(array_key_exists('type', $extends))
-                $extendName = $extends['type'];
+    private function addForeignKeys()
+    {
+        $fields = "";
+        foreach($this->relationship as $relation) {
+            if($relation->getType() == "belongsTo") {
+                $foreignKey = $relation->model->lower() . "_id";
+                $fields .= "\t\t\t" .$this->setColumn('integer', $foreignKey);
+                $fields .= $this->addColumnOption('unsigned') . ";\n";
+                //$fields .= "\t\t\t\$table->foreign('". $foreignKey."')->references('id')->on('".$relation->model->plural()."');\n";
+            }
+        }
+        return $fields;
+    }
 
-            $extendsOutput .= "$extendName";
-            foreach($extends as $key => $extend) {
-                if($key != "type") {
-                    $extendsOutput .= " ".$extend.",";
+    protected function increment()
+    {
+        return "\$table->increments('id')";
+    }
+
+    protected function setColumn($type, $field = '')
+    {
+        return empty($field)
+            ? "\$table->$type()"
+            : "\$table->$type('$field')";
+    }
+
+    protected function addColumnOption($option)
+    {
+        return "->{$option}()";
+    }
+
+    protected function addColumns()
+    {
+        $content = '';
+
+        if(!empty($this->fieldNames))
+        {
+            // Build up the schema
+            foreach( $this->fieldNames as $arg ) {
+                // Like age, integer, and nullable
+                @list($field, $type, $setting) = explode(':', $arg);
+
+                if ( !$type )
+                {
+                    echo "There was an error in your formatting. Please try again. Did you specify both a field and data type for each? age:int\n";
+                    die();
                 }
-            }
-            $extendsOutput = rtrim($extendsOutput, ",") . " ";
-        }
 
-        $fileContents = "<?php ".$this->namespace."\n\n";
-        $fileContents .= "$usesOutput";
-        $fileContents .= "$type ". $className . " " . $extendsOutput . "\n{\n";
-        foreach($vars as $type => $name) {
-            $fileContents .= "\t$type \$$name;\n";
-        }
-        $fileContents .= "\n";
-        $fileContents .= $content;
-        $fileContents .= "}\n";
+                $rule = "\t\t\t";
 
-        $this->createFile($path, $fileContents);
-    }
+                // Primary key check
+                if ( $field === 'id' and $type === 'integer' )
+                {
+                    $rule .= $this->increment();
+                } else {
+                    $rule .= $this->setColumn($type, $field);
 
-    /*
-    *   Checks if file exists, and then prompts to overwrite
-    */
-    private function createFile($fileName, $fileContents)
-    {
-        if(\File::exists($fileName))
-        {
-            $overwrite = $this->confirm("$fileName already exists! Overwrite it? ", true);
+                    if ( !empty($setting) ) {
+                        $rule .= $this->addColumnOption($setting);
+                    }
+                }
 
-            if($overwrite)
-            {
-                \File::put($fileName, $fileContents);
+                $content .= $rule . ";\n";
             }
         }
-        else
-        {
-            \File::put($fileName, $fileContents);
-        }
+
+        return $content;
     }
 
     private function runMigrations()
@@ -262,21 +271,75 @@ class StartCommand extends Command
         }
     }
 
-    /**
-     * @param $dir
-     */
-    private function createDirectory($dir)
+    private function createModel()
     {
-        if (!\File::isDirectory($dir))
-            \File::makeDirectory($dir);
+        $fileName = "app/models/" . $this->model->upper() . ".php";
+        $fileContents = "";
+        foreach ($this->relationship as $relation) {
+            $relatedModel = $relation->model;
+
+            $functionContent = "\t\treturn \$this->" . $relation->getType() . "('".$relatedModel->nameWithNamespace()."');\n";
+            $fileContents .= $this->createFunction($relation->getName(), $functionContent);
+
+            $index = 0;
+
+            $reverseRelations = $relation->reverseRelations();
+
+            if(count($reverseRelations) > 1) {
+                $index = $this->ask("How does " . $relatedModel->upper() . " relate back to ". $this->model->upper() ."? (0=".$reverseRelations[0]. " 1=".$reverseRelations[1] .") ");
+            }
+
+            $reverseRelationType = $reverseRelations[$index];
+            $reverseRelationName = $relation->getReverseName($this->model, $reverseRelationType);
+
+            $content = \File::get('app/models/'.$relatedModel->upper().'.php');
+            if (preg_match("/function ".$this->model->lower()."/", $content) !== 1 && preg_match("/function ".$this->model->plural()."/", $content) !== 1) {
+                $content = substr($content, 0, strrpos($content, "}"));
+                $functionContent = "\t\treturn \$this->" . $reverseRelationType . "('".$this->model->nameWithNamespace()."');\n";
+                $content .= $this->createFunction($reverseRelationName, $functionContent) . "}\n";
+            }
+
+            \File::put('app/models/'.$relatedModel->upper().'.php', $content);
+        }
+
+        $this->createClass($fileName, $fileContents, ["name" => "\\Eloquent"]);
+
+        $this->info('Model "'.$this->model->upper().'" created!');
     }
 
+    private function createSeeds()
+    {
+        $functionContent = "\t\t\$".$this->model->plural()." = array(\n";
+
+        foreach($this->propertiesArr as $property) {
+            $functionContent .= "\t\t\t'$property' => 'Testing ".$this->model->lower(). $property."',\n";
+        }
+        $functionContent .= "\t\t);\n";
+        $functionContent .= "\t\tDB::table('".$this->model->plural()."')->insert(\$".$this->model->plural().");\n";
+
+        $fileContents = $this->createFunction("run", $functionContent);
+
+        $fileName = "app/database/seeds/" . $this->model->upperPlural() . "TableSeeder.php";
+        $this->createClass($fileName, $fileContents, ['name' => 'Seeder']);
+
+        $databaseSeederPath = app_path() . '/database/seeds/DatabaseSeeder.php';
+        $tableSeederClassName = $this->model->upperPlural() . 'TableSeeder';
+
+        $content = \File::get($databaseSeederPath);
+        if(preg_match("/$tableSeederClassName/", $content) !== 1)
+        {
+            $content = preg_replace("/(run\(\).+?)}/us", "$1\t\$this->call('{$tableSeederClassName}');\n\t}", $content);
+            \File::put($databaseSeederPath, $content);
+        }
+
+        $this->info('Database seed file created!');
+    }
     /**
      * @return array
      */
     private function createRepositoryInterface()
     {
-        $fileName = "app/repositories/interfaces/" . $this->className['upper'] . "RepositoryInterface.php";
+        $fileName = "app/repositories/interfaces/" . $this->model->upper() . "RepositoryInterface.php";
 
         $fileContents = "\tpublic function all();\n";
         $fileContents .= "\tpublic function find(\$id);\n";
@@ -294,36 +357,36 @@ class StartCommand extends Command
     {
         $functions = array();
 
-        $functionContents = "\t\t\$this->" . $this->className['lower'] . " = \$" . $this->className['lower'] . ";\n";
-        array_push($functions, ['name' => '__construct', 'content' => $functionContents, 'args' => $this->className['upper'] . " \$" . $this->className['lower']]);
-        $functionContents = "\t\treturn \$this->" . $this->className['lower'] . "->all();\n";
+        $functionContents = "\t\t\$this->" . $this->model->lower() . " = \$" . $this->model->lower() . ";\n";
+        array_push($functions, ['name' => '__construct', 'content' => $functionContents, 'args' => $this->model->upper() . " \$" . $this->model->lower()]);
+        $functionContents = "\t\treturn \$this->" . $this->model->lower() . "->all();\n";
         array_push($functions, ['name' => 'all', 'content' => $functionContents]);
-        $functionContents = "\t\treturn \$this->" . $this->className['lower'] . "->find(\$id);\n";
+        $functionContents = "\t\treturn \$this->" . $this->model->lower() . "->find(\$id);\n";
         array_push($functions, ['name' => 'find', 'content' => $functionContents, 'args' => "\$id"]);
-        $functionContents = "        \$" . $this->className['lower'] . " = new " . $this->className['upper'] . ";\n";
+        $functionContents = "        \$" . $this->model->lower() . " = new " . $this->model->upper() . ";\n";
         foreach ($this->propertiesArr as $property) {
-            $functionContents .= "        \$" . $this->className['lower'] . "->" . $property . " = \$input['" . $property . "'];\n";
+            $functionContents .= "        \$" . $this->model->lower() . "->" . $property . " = \$input['" . $property . "'];\n";
         }
-        $functionContents .= "        \$" . $this->className['lower'] . "->save();\n";
+        $functionContents .= "        \$" . $this->model->lower() . "->save();\n";
         array_push($functions, ['name' => 'store', 'content' => $functionContents, 'args' => "\$input"]);
-        $functionContents = "\t\t\$" . $this->className['lower'] . " = \$this->find(\$id);\n";
+        $functionContents = "\t\t\$" . $this->model->lower() . " = \$this->find(\$id);\n";
         foreach ($this->propertiesArr as $property) {
-            $functionContents .= "        \$" . $this->className['lower'] . "->" . $property . " = \$input['" . $property . "'];\n";
+            $functionContents .= "        \$" . $this->model->lower() . "->" . $property . " = \$input['" . $property . "'];\n";
         }
-        $functionContents .= "        \$" . $this->className['lower'] . "->save();\n";
+        $functionContents .= "        \$" . $this->model->lower() . "->save();\n";
         array_push($functions, ['name' => 'update', 'content' => $functionContents, 'args' => "\$id, \$input"]);
         $functionContents = "\t\t\$this->find(\$id)->delete();\n";
         array_push($functions, ['name' => 'destroy', 'content' => $functionContents, 'args' => "\$id"]);
 
         $fileContents = $this->createFunctions($functions);
 
-        $fileName = 'app/repositories/Eloquent' . $this->className['upper'] . 'Repository.php';
-        $vars = ["private" => $this->className['lower']];
-        $extends = ['type' => 'implements', "name"=>$this->className['upper'] . "RepositoryInterface"];
+        $fileName = 'app/repositories/Eloquent' . $this->model->upper() . 'Repository.php';
+        $vars = ["private" => $this->model->lower()];
+        $extends = ['type' => 'implements', "name"=>$this->model->upper() . "RepositoryInterface"];
 
         $this->createClass($fileName, $fileContents, $extends, $vars);
 
-        $this->info($this->className['upper'].'Repository created!');
+        $this->info($this->model->upper().'Repository created!');
     }
 
     /**
@@ -335,27 +398,13 @@ class StartCommand extends Command
         if (preg_match("/repositories/", $content) !== 1)
             $content = preg_replace("/app_path\(\).'\/controllers',/", "app_path().'/controllers',\n\tapp_path().'/repositories',", $content);
 
+        \File::put('app/start/global.php', $content);
+
         $content = \File::get('composer.json');
         if (preg_match("/repositories/", $content) !== 1)
             $content = preg_replace("/\"app\/controllers\",/", "\"app/controllers\",\n\t\t\t\"app/repositories\",", $content);
 
-        \File::put('app/start/global.php', $content);
-    }
-
-    /**
-     * @param $functions
-     * @param $fileContents
-     */
-    private function createFunctions($functions)
-    {
-        $fileContents = "";
-        foreach ($functions as $function) {
-            $args = "";
-            if(array_key_exists('args', $function))
-                $args = $function['args'];
-            $fileContents .= $this->createFunction($function['name'], $function['content'], $args);
-        }
-        return $fileContents;
+        \File::put('composer.json', $content);
     }
 
     /**
@@ -363,7 +412,7 @@ class StartCommand extends Command
      */
     private function createController()
     {
-        $fileName = "app/controllers/" . $this->className['upper'] . "Controller.php";
+        $fileName = "app/controllers/" . $this->model->upper() . "Controller.php";
 
         if ($this->isResource)
             $functionNames = ['constructor' => '__construct', 'index' => 'index', 'create' => 'create', 'store' => 'store', 'show' => 'show', 'edit' => 'edit', 'update' => 'update', 'destroy' => 'destroy'];
@@ -372,41 +421,41 @@ class StartCommand extends Command
 
         $functions = array();
 
-        $functionContents = "\t\t\$this->" . $this->className['lower'] . " = \$" . $this->className['lower'] . ";\n";
-        array_push($functions, ['name' => $functionNames['constructor'], 'content' => $functionContents, 'args' => $this->className['upper'] . "RepositoryInterface \$" . $this->className['lower']]);
+        $functionContents = "\t\t\$this->" . $this->model->lower() . " = \$" . $this->model->lower() . ";\n";
+        array_push($functions, ['name' => $functionNames['constructor'], 'content' => $functionContents, 'args' => $this->model->upper() . "RepositoryInterface \$" . $this->model->lower()]);
 
-        $functionContents = "    \t\$" . $this->className['plural'] . " = \$this->" . $this->className['lower'] . "->all();\n";
-        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->className['lower'] . ".all', compact('" . $this->className['plural'] . "'));\n";
+        $functionContents = "    \t\$" . $this->model->plural() . " = \$this->" . $this->model->lower() . "->all();\n";
+        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".all', compact('" . $this->model->plural() . "'));\n";
         array_push($functions, ['name' => $functionNames['index'], 'content' => $functionContents]);
 
-        $functionContents = "        \$this->layout->content = \\View::make('" . $this->className['lower'] . ".new');\n";
+        $functionContents = "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".new');\n";
         array_push($functions, ['name' => $functionNames['create'], 'content' => $functionContents]);
 
-        $functionContents = "        \$this->" . $this->className['lower'] . "->store(\\Input::only(" . $this->propertiesStr . "));\n";
-        $functionContents .= "        return \\Redirect::to('" . $this->className['lower'] . "');\n";
+        $functionContents = "        \$this->" . $this->model->lower() . "->store(\\Input::only(" . $this->propertiesStr . "));\n";
+        $functionContents .= "        return \\Redirect::to('" . $this->model->lower() . "');\n";
         array_push($functions, ['name' => $functionNames['store'], 'content' => $functionContents]);
 
-        $functionContents = "        \$" . $this->className['lower'] . " = \$this->" . $this->className['lower'] . "->find(\$id);\n";
-        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->className['lower'] . ".view')->with('" . $this->className['lower'] . "', \$" . $this->className['lower'] . ");\n";
-        $functionContents .= "        //return Response::json(['" . $this->className['lower'] . "' => \$" . $this->className['lower'] . "]);\n";
+        $functionContents = "        \$" . $this->model->lower() . " = \$this->" . $this->model->lower() . "->find(\$id);\n";
+        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".view')->with('" . $this->model->lower() . "', \$" . $this->model->lower() . ");\n";
+        $functionContents .= "        //return Response::json(['" . $this->model->lower() . "' => \$" . $this->model->lower() . "]);\n";
         array_push($functions, ['name' => $functionNames['show'], 'content' => $functionContents, 'args' => "\$id"]);
 
-        $functionContents = "        \$" . $this->className['lower'] . " = \$this->" . $this->className['lower'] . "->find(\$id);\n";
-        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->className['lower'] . ".edit')->with('" . $this->className['lower'] . "', \$" . $this->className['lower'] . ");\n";
+        $functionContents = "        \$" . $this->model->lower() . " = \$this->" . $this->model->lower() . "->find(\$id);\n";
+        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".edit')->with('" . $this->model->lower() . "', \$" . $this->model->lower() . ");\n";
         array_push($functions, ['name' => $functionNames['edit'], 'content' => $functionContents, 'args' => "\$id"]);
 
-        $functionContents = "        \$" . $this->className['lower'] . " = \$this->" . $this->className['lower'] . "->update(\$id, \\Input::only([" . $this->propertiesStr . "]));\n";
-        $functionContents .= "        return \\Redirect::to('" . $this->className['lower'] . "/'.\$id);\n";
+        $functionContents = "        \$" . $this->model->lower() . " = \$this->" . $this->model->lower() . "->update(\$id, \\Input::only([" . $this->propertiesStr . "]));\n";
+        $functionContents .= "        return \\Redirect::to('" . $this->model->lower() . "/'.\$id);\n";
         array_push($functions, ['name' => $functionNames['update'], 'content' => $functionContents, 'args' => "\$id"]);
 
-        $functionContents = "        \$this->" . $this->className['lower'] . "->destroy(\$id);\n";
+        $functionContents = "        \$this->" . $this->model->lower() . "->destroy(\$id);\n";
         array_push($functions, ['name' => $functionNames['destroy'], 'content' => $functionContents, 'args' => "\$id"]);
 
         $fileContents = $this->createFunctions($functions);
 
-        $this->createClass($fileName, $fileContents, ["name"=>"\\BaseController"], ['protected' => $this->className['lower']]);
+        $this->createClass($fileName, $fileContents, ["name"=>"\\BaseController"], ['protected' => $this->model->lower()]);
 
-        $this->info($this->className['upper'] . 'Controller created!');
+        $this->info($this->model->upper() . 'Controller created!');
     }
 
     /**
@@ -416,27 +465,27 @@ class StartCommand extends Command
     {
         $functions = array();
 
-        $functionContents = "\t\t\$this->call('GET', '" . $this->className['lower'] . "');\n";
+        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . "');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testIndex', 'content' => $functionContents]);
 
         $getPath = $this->isResource ? "" : "details/";
 
-        $functionContents = "\t\t\$this->call('GET', '" . $this->className['lower'] . "/" . $getPath . "1');\n";
+        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . "/" . $getPath . "1');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testShow', 'content' => $functionContents]);
 
-        $functionContents = "\t\t\$this->call('GET', '" . $this->className['lower'] . "/create');\n";
+        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . "/create');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testCreate', 'content' => $functionContents]);
 
-        $functionContents = "\t\t\$this->call('GET', '" . $this->className['lower'] . "/edit/1');\n";
+        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . "/edit/1');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testEdit', 'content' => $functionContents]);
 
         $fileContents = $this->createFunctions($functions);
 
-        $fileName = "app/tests/controller/" . $this->className['upperPlural'] . "ControllerTest.php";
+        $fileName = "app/tests/controller/" . $this->model->upperPlural() . "ControllerTest.php";
 
         $this->createClass($fileName, $fileContents, ["name" => "\\TestCase"]);
 
@@ -451,16 +500,14 @@ class StartCommand extends Command
     {
         $routeFile = "app/routes.php";
 
-        $namespace = $this->namespace ? $this->namespace . "\\" : "";
-
-        $fileContents = "\nApp::bind('" . $namespace . $this->className['upper'] . "RepositoryInterface','" . $namespace . "Eloquent" . $this->className['upper'] . "Repository');\n";
+        $fileContents = "\nApp::bind('" . $this->model->nameWithNamespace() . "RepositoryInterface','" . $this->namespace . "Eloquent" . $this->model->upper() . "Repository');\n";
 
         $routeType = $this->isResource ? "resource" : "controller";
 
-        $fileContents .= "Route::" . $routeType . "('" . $this->className['lower'] . "', '" . $namespace . $this->className['upper'] . "Controller');\n";
+        $fileContents .= "Route::" . $routeType . "('" . $this->model->lower() . "', '" . $this->model->nameWithNamespace() . "Controller');\n";
 
         $content = \File::get($routeFile);
-        if (preg_match("/" . $this->className['lower'] . "/", $content) !== 1) {
+        if (preg_match("/" . $this->model->lower() . "/", $content) !== 1) {
             \File::append($routeFile, $fileContents);
         }
 
@@ -474,21 +521,21 @@ class StartCommand extends Command
          *                   view.blade.php
          *
          ********************************************************************/
-        $dir = "app/views/" . $this->className['lower'] . "/";
+        $dir = "app/views/" . $this->model->lower() . "/";
         if (!\File::isDirectory($dir))
             \File::makeDirectory($dir);
         $fileName = $dir . "view.blade.php";
         $fileContents = "@section('content')\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <h1>Viewing " . $this->className['lower'] . "</h1>\n";
-        $fileContents .= "    <a class=\"btn\" href=\"{{ url('" . $this->className['lower'] . "/'.\$" . $this->className['lower'] . "->id.'/edit') }}\">Edit</a>\n";
+        $fileContents .= "    <h1>Viewing " . $this->model->lower() . "</h1>\n";
+        $fileContents .= "    <a class=\"btn\" href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id.'/edit') }}\">Edit</a>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
         $fileContents .= "    <ul>\n";
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property) {
                 $upper = ucfirst($property);
-                $fileContents .= "        <li>$upper: {{ \$" . $this->className['lower'] . "->" . $property . " }}</li>";
+                $fileContents .= "        <li>$upper: {{ \$" . $this->model->lower() . "->" . $property . " }}</li>";
             }
         }
         $fileContents .= "    <ul>\n";
@@ -504,24 +551,24 @@ class StartCommand extends Command
         $fileName = $dir . "edit.blade.php";
         $fileContents = "@section('content')\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <h2>Edit " . $this->className['lower'] . "</h2>\n";
+        $fileContents .= "    <h2>Edit " . $this->model->lower() . "</h2>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->className['lower'] . "/'.\$" . $this->className['lower'] . "->id) }}\">\n";
+        $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">\n";
         $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property) {
                 $upper = ucfirst($property);
                 $fileContents .= "    <div class=\"form-group\">\n";
                 $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
-                $fileContents .= "        <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$" . $this->className['lower'] . "->$property }}\">\n";
+                $fileContents .= "        <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$" . $this->model->lower() . "->$property }}\">\n";
                 $fileContents .= "    </div>\n";
             }
         }
         $fileContents .= "    <div class=\"form-group\">\n";
         $fileContents .= "        <label class=\"control-label\"></label>\n";
         $fileContents .= "        <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
-        $fileContents .= "        <input class=\"btn\" type=\"submit\" value=\"Edit " . $this->className['lower'] . "\">\n";
+        $fileContents .= "        <input class=\"btn\" type=\"submit\" value=\"Edit " . $this->model->lower() . "\">\n";
         $fileContents .= "    </div>\n";
         $fileContents .= "    </form>\n";
         $fileContents .= "</div>\n";
@@ -536,8 +583,8 @@ class StartCommand extends Command
         $fileName = $dir . "all.blade.php";
         $fileContents = "@section('content')\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <h1>All " . $this->className['upperPlural'] . "</h1>\n";
-        $fileContents .= "    <a class=\"btn\" href=\"{{ url('".$this->className['lower']."/create') }}\">New</a>\n";
+        $fileContents .= "    <h1>All " . $this->model->upperPlural() . "</h1>\n";
+        $fileContents .= "    <a class=\"btn\" href=\"{{ url('".$this->model->lower()."/create') }}\">New</a>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
         $fileContents .= "<table class=\"table\">\n";
@@ -549,11 +596,11 @@ class StartCommand extends Command
         }
         $fileContents .= "</thead>\n";
         $fileContents .= "<tbody>\n";
-        $fileContents .= "@foreach(\$" . $this->className['plural'] . " as \$" . $this->className['lower'] . ")\n";
+        $fileContents .= "@foreach(\$" . $this->model->plural() . " as \$" . $this->model->lower() . ")\n";
         $fileContents .= "\t<tr>\n\t\t";
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property) {
-                $fileContents .= "<td><a href=\"{{ url('" . $this->className['lower'] . "/'.\$" . $this->className['lower'] . "->id) }}\">{{ \$" . $this->className['lower'] . "->$property }}</a></td>";
+                $fileContents .= "<td><a href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">{{ \$" . $this->model->lower() . "->$property }}</a></td>";
             }
         }
         $fileContents .= "\n\t</tr>\n";
@@ -572,10 +619,10 @@ class StartCommand extends Command
         $fileName = $dir . "new.blade.php";
         $fileContents = "@section('content')\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <h2>New " . $this->className['upper'] . "</h2>\n";
+        $fileContents .= "    <h2>New " . $this->model->upper() . "</h2>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->className['lower'] . "') }}\">\n";
+        $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "') }}\">\n";
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property) {
                 $upper = ucfirst($property);
@@ -588,7 +635,7 @@ class StartCommand extends Command
         $fileContents .= "    <div class=\"form-group\">\n";
         $fileContents .= "        <label class=\"control-label\"></label>\n";
         $fileContents .= "        <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
-        $fileContents .= "        <input class=\"btn\" type=\"submit\" value=\"Add New " . $this->className['lower'] . "\">\n";
+        $fileContents .= "        <input class=\"btn\" type=\"submit\" value=\"Add New " . $this->model->lower() . "\">\n";
         $fileContents .= "    </div>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "@stop\n";
@@ -817,5 +864,121 @@ class StartCommand extends Command
                 $this->info('Foundation successfully set up (v4.0.5)!');
             }
         }
+    }
+
+    public function createFunction($name, $content, $args = "", $type = "public")
+    {
+        $fileContents = "\t$type function $name($args)\n";
+        $fileContents .= "\t{\n";
+        $fileContents .= $content;
+        $fileContents .= "\t}\n\n";
+
+        return $fileContents;
+    }
+
+    public function createInterface($path, $content)
+    {
+        $this->createClass($path, $content, array(), array(), array(), "interface");
+    }
+
+    public function createMigrationClass($path, $content, $name)
+    {
+        $className = "Create" . $name . "Table";
+        $this->createClass($path, $content, ['name' => 'Migration'], array(), ['Illuminate\Database\Migrations\Migration', 'Illuminate\Database\Schema\Blueprint'], "class", $className, false, true);
+    }
+
+    public function createClass($path, $content, array $extends = array(), $vars = array(), array $uses = array(), $type = "class", $customName = "", $useNamespace = true, $overwrite = false)
+    {
+        $usesOutput = "";
+        $extendsOutput = "";
+        $namespace = "";
+
+        $fileName = substr(strrchr($path, "/"), 1);
+
+        if(empty($customName))
+            $className = substr($fileName, 0, strrpos($fileName, "."));
+        else
+            $className = $customName;
+
+        if($this->namespace && $useNamespace)
+            $namespace = "namespace " . $this->namespace . ";";
+
+        if($uses) {
+            foreach($uses as $use) {
+                $usesOutput .= "use $use;\n";
+            }
+            $usesOutput .= "\n";
+        }
+
+        if($extends) {
+            $extendName = "extends";
+            if(array_key_exists('type', $extends))
+                $extendName = $extends['type'];
+
+            $extendsOutput .= "$extendName";
+            foreach($extends as $key => $extend) {
+                if($key != "type") {
+                    $extendsOutput .= " ".$extend.",";
+                }
+            }
+            $extendsOutput = rtrim($extendsOutput, ",") . " ";
+        }
+
+        $fileContents = "<?php ".$namespace."\n\n";
+        $fileContents .= "$usesOutput";
+        $fileContents .= "$type ". $className . " " . $extendsOutput . "\n{\n";
+        foreach($vars as $type => $name) {
+            $fileContents .= "\t$type \$$name;\n";
+        }
+        $fileContents .= "\n";
+        $fileContents .= $content;
+        $fileContents .= "}\n";
+
+        $this->createFile($path, $fileContents, $overwrite);
+    }
+
+    /*
+    *   Checks if file exists, and then prompts to overwrite
+    */
+    public function createFile($fileName, $fileContents, $overwrite = false)
+    {
+        if(\File::exists($fileName) && !$overwrite)
+        {
+            $overwrite = $this->confirm("$fileName already exists! Overwrite it? ", true);
+
+            if($overwrite)
+            {
+                \File::put($fileName, $fileContents);
+            }
+        }
+        else
+        {
+            \File::put($fileName, $fileContents);
+        }
+    }
+
+    /**
+     * @param $dir
+     */
+    public function createDirectory($dir)
+    {
+        if (!\File::isDirectory($dir))
+            \File::makeDirectory($dir);
+    }
+
+    /**
+     * @param $functions
+     * @param $fileContents
+     */
+    public function createFunctions($functions)
+    {
+        $fileContents = "";
+        foreach ($functions as $function) {
+            $args = "";
+            if(array_key_exists('args', $function))
+                $args = $function['args'];
+            $fileContents .= $this->createFunction($function['name'], $function['content'], $args);
+        }
+        return $fileContents;
     }
 }
