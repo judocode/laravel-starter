@@ -26,8 +26,8 @@ class StartCommand extends Command
     {
         $this->generateLayoutFiles();
 
-        $modelAndFields = $this->ask('Add model with fields or "n" (eg. MyNamespace\Book title:string year:integer) ');
-        $moreTables = $modelAndFields == "n" ? false : true;
+        $modelAndFields = $this->ask('Add model with fields or "q" to quit (eg. MyNamespace\Book title:string year:integer) ');
+        $moreTables = $modelAndFields == "q" ? false : true;
 
         while( $moreTables )
         {
@@ -92,6 +92,7 @@ class StartCommand extends Command
             $this->createSeeds();
 
             $this->createDirectory("app/repositories");
+            $this->createDirectory("app/repositories/interfaces");
 
             $this->createRepositoryInterface();
 
@@ -109,7 +110,8 @@ class StartCommand extends Command
 
             $this->createTestsFile();
 
-            $moreTables = $this->confirm('Do you want to add more tables [y/n]? ', true);
+            $modelAndFields = $this->ask('Add model with fields or "q" to quit (eg. MyNamespace\Book title:string year:integer) ');
+            $moreTables = $modelAndFields == "q" ? false : true;
         }
 
         $this->info('Done!');
@@ -277,7 +279,7 @@ class StartCommand extends Command
      */
     private function createRepositoryInterface()
     {
-        $fileName = "app/repositories/" . $this->className['upper'] . "RepositoryInterface.php";
+        $fileName = "app/repositories/interfaces/" . $this->className['upper'] . "RepositoryInterface.php";
 
         $fileContents = "\tpublic function all();\n";
         $fileContents .= "\tpublic function find(\$id);\n";
