@@ -281,25 +281,37 @@ class StartCommand extends Command
             $functionContent = "\t\treturn \$this->" . $relation->getType() . "('".$relatedModel->nameWithNamespace()."');\n";
             $fileContents .= $this->createFunction($relation->getName(), $functionContent);
 
-            $index = 0;
+            $relatedModelFile = 'app/models/'.$relatedModel->upper().'.php';
+            $continue = true;
 
-            $reverseRelations = $relation->reverseRelations();
-
-            if(count($reverseRelations) > 1) {
-                $index = $this->ask("How does " . $relatedModel->upper() . " relate back to ". $this->model->upper() ."? (0=".$reverseRelations[0]. " 1=".$reverseRelations[1] .") ");
+            if(!\File::exists($relatedModelFile)) {
+                $continue = $this->confirm("Model ". $relatedModel->upper() . " doesn't exist yet. Would you like to create it now [y/n]? ", true);
+                if($continue) {
+                    $this->createClass($relatedModelFile, "", ['name' => "\\Eloquent"]);
+                }
             }
 
-            $reverseRelationType = $reverseRelations[$index];
-            $reverseRelationName = $relation->getReverseName($this->model, $reverseRelationType);
+            if($continue) {
+                $index = 0;
 
-            $content = \File::get('app/models/'.$relatedModel->upper().'.php');
-            if (preg_match("/function ".$this->model->lower()."/", $content) !== 1 && preg_match("/function ".$this->model->plural()."/", $content) !== 1) {
-                $content = substr($content, 0, strrpos($content, "}"));
-                $functionContent = "\t\treturn \$this->" . $reverseRelationType . "('".$this->model->nameWithNamespace()."');\n";
-                $content .= $this->createFunction($reverseRelationName, $functionContent) . "}\n";
+                $reverseRelations = $relation->reverseRelations();
+
+                if(count($reverseRelations) > 1) {
+                    $index = $this->ask("How does " . $relatedModel->upper() . " relate back to ". $this->model->upper() ."? (0=".$reverseRelations[0]. " 1=".$reverseRelations[1] .") ");
+                }
+
+                $reverseRelationType = $reverseRelations[$index];
+                $reverseRelationName = $relation->getReverseName($this->model, $reverseRelationType);
+
+                $content = \File::get($relatedModelFile);
+                if (preg_match("/function ".$this->model->lower()."/", $content) !== 1 && preg_match("/function ".$this->model->plural()."/", $content) !== 1) {
+                    $content = substr($content, 0, strrpos($content, "}"));
+                    $functionContent = "\t\treturn \$this->" . $reverseRelationType . "('".$this->model->nameWithNamespace()."');\n";
+                    $content .= $this->createFunction($reverseRelationName, $functionContent) . "}\n";
+                }
+
+                \File::put($relatedModelFile, $content);
             }
-
-            \File::put('app/models/'.$relatedModel->upper().'.php', $content);
         }
 
         $this->createClass($fileName, $fileContents, ["name" => "\\Eloquent"]);
