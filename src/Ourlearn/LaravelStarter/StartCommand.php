@@ -27,7 +27,11 @@ class StartCommand extends Command
     {
         $this->generateLayoutFiles();
 
-        $modelAndFields = $this->ask('Add model with fields or "q" to quit (eg. MyNamespace\Book title:string year:integer) ');
+        $this->info('Add model with its fields or type "q" to quit.');
+        $this->info('Example with namespace: MyNamespace\Book title:string year:integer');
+        $this->info('Or with a relation: Book belongsTo Author title:string published:integer');
+
+        $modelAndFields = $this->ask('Now your turn: ');
         $moreTables = $modelAndFields == "q" ? false : true;
 
         while( $moreTables )

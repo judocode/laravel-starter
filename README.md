@@ -26,6 +26,14 @@ That's it! You're all set to go. Run the `artisan` command from the Terminal to 
 
 Run `php artisan start` and the guided setup will help you with the rest!
 
+## Cool stuff
+
+Within the command, there is a prompt to ask if you want to add tables, which now supports adding a relationship. So, you can type:
+
+`Book belongsTo Author title:string published:integer`
+
+... and this will automatically add the "author" method to your Book model, and add "author_id" to your migration table.
+
 ## Future ideas
 
 - Automatically create js file based on js framework that is specified.
