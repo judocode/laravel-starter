@@ -544,7 +544,9 @@ class StartCommand extends Command
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testCreate', 'content' => $functionContents]);
 
-        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . "/edit/1');\n";
+        $getPath = $this->isResource ? "/1/edit" : "/edit/1";
+        
+        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . $getPath."');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testEdit', 'content' => $functionContents]);
 
