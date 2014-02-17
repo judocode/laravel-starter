@@ -3,6 +3,7 @@
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
+use Faker\Factory;
 
 class StartCommand extends Command
 {
@@ -75,10 +76,11 @@ class StartCommand extends Command
                     $pos = strrpos($field, ":");
                     if ($pos !== false)
                     {
+                        $type = substr($field, $pos+1);
                         $field = substr($field, 0, $pos);
                     }
 
-                    array_push($this->propertiesArr, $field);
+                    $this->propertiesArr[$field] = $type;
                     $this->propertiesStr .= "'".$field ."',";
                 }
 
@@ -325,13 +327,58 @@ class StartCommand extends Command
 
     private function createSeeds()
     {
+        $faker = Factory::create();
+
+        $databaseSeeder = 'app/database/seeds/DatabaseSeeder.php';
+        $databaseSeederContents = \File::get($databaseSeeder);
+        if(preg_match("/faker/", $databaseSeederContents) !== 1) {
+            $contentBefore = substr($databaseSeederContents, 0, strpos($databaseSeederContents, "{"));
+            $contentAfter = substr($databaseSeederContents, strpos($databaseSeederContents, "{")+1);
+
+            $databaseSeederContents = $contentBefore;
+            $databaseSeederContents .= "{\n\tprotected \$faker;\n\n";
+            $functionContents = "\t\tif(empty(\$this->faker)) {\n";
+            $functionContents .= "\t\t\t\$this->faker = Faker\\Factory::create();\n\t\t}\n\n";
+            $functionContents .= "\t\treturn \$this->faker;\n";
+
+            $databaseSeederContents .= $this->createFunction("getFaker", $functionContents);
+
+            $databaseSeederContents .= $contentAfter;
+
+            \File::put($databaseSeeder, $databaseSeederContents);
+        }
+
         $functionContent = "\t\t\$faker = \$this->getFaker();\n\n";
         $functionContent .= "\t\tfor(\$i = 0; \$i < 10; \$i++) {\n";
 
         $functionContent .= "\t\t\t\$".$this->model->lower()." = array(\n";
 
-        foreach($this->propertiesArr as $property) {
-            $functionContent .= "\t\t\t\t'$property' => 'Testing ".$this->model->lower(). $property."',\n";
+        foreach($this->propertiesArr as $property => $type) {
+
+            if($property == "password") {
+                $functionContent .= "\t\t\t\t'$property' => \\Hash::make('password'),\n";
+            } else {
+                if(property_exists($faker, $property)) {
+                    $functionContent .= "\t\t\t\t'$property' => \$faker->".$property.",\n";
+                } else if(property_exists($faker, $type)) {
+                    $functionContent .= "\t\t\t\t'$property' => \$faker->".$type.",\n";
+                } else {
+                    $fakerType = "";
+                    switch($type) {
+                        case "integer":
+                            $fakerType = "randomDigitNotNull";
+                            break;
+                        case "string":
+                            $fakerType = "word";
+                            break;
+                    }
+
+                    $fakerType = $fakerType ? "\$faker->".$fakerType : "";
+
+                    $functionContent .= "\t\t\t\t'$property' => $fakerType,\n";
+                }
+
+            }
         }
         $functionContent .= "\t\t\t);\n";
         $functionContent .= "\t\t\t".$this->model->upper()."::create(\$".$this->model->lower().");\n";
@@ -342,14 +389,12 @@ class StartCommand extends Command
         $fileName = "app/database/seeds/" . $this->model->upperPlural() . "TableSeeder.php";
         $this->createClass($fileName, $fileContents, ['name' => 'DatabaseSeeder']);
 
-        $databaseSeederPath = app_path() . '/database/seeds/DatabaseSeeder.php';
         $tableSeederClassName = $this->model->upperPlural() . 'TableSeeder';
 
-        $content = \File::get($databaseSeederPath);
-        if(preg_match("/$tableSeederClassName/", $content) !== 1)
-        {
+        $content = \File::get($databaseSeeder);
+        if(preg_match("/$tableSeederClassName/", $content) !== 1) {
             $content = preg_replace("/(run\(\).+?)}/us", "$1\t\$this->call('{$tableSeederClassName}');\n\t}", $content);
-            \File::put($databaseSeederPath, $content);
+            \File::put($databaseSeeder, $content);
         }
 
         $this->info('Database seed file created!');
@@ -384,13 +429,13 @@ class StartCommand extends Command
         $functionContents = "\t\treturn \$this->" . $this->model->lower() . "->find(\$id);\n";
         array_push($functions, ['name' => 'find', 'content' => $functionContents, 'args' => "\$id"]);
         $functionContents = "        \$" . $this->model->lower() . " = new " . $this->model->upper() . ";\n";
-        foreach ($this->propertiesArr as $property) {
+        foreach ($this->propertiesArr as $property => $type) {
             $functionContents .= "        \$" . $this->model->lower() . "->" . $property . " = \$input['" . $property . "'];\n";
         }
         $functionContents .= "        \$" . $this->model->lower() . "->save();\n";
         array_push($functions, ['name' => 'store', 'content' => $functionContents, 'args' => "\$input"]);
         $functionContents = "\t\t\$" . $this->model->lower() . " = \$this->find(\$id);\n";
-        foreach ($this->propertiesArr as $property) {
+        foreach ($this->propertiesArr as $property => $type) {
             $functionContents .= "        \$" . $this->model->lower() . "->" . $property . " = \$input['" . $property . "'];\n";
         }
         $functionContents .= "        \$" . $this->model->lower() . "->save();\n";
@@ -553,7 +598,7 @@ class StartCommand extends Command
         $fileContents .= "<div class=\"row\">\n";
         $fileContents .= "    <ul>\n";
         if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property) {
+            foreach ($this->propertiesArr as $property => $type) {
                 $upper = ucfirst($property);
                 $fileContents .= "        <li>$upper: {{ \$" . $this->model->lower() . "->" . $property . " }}</li>";
             }
@@ -577,7 +622,7 @@ class StartCommand extends Command
         $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">\n";
         $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
         if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property) {
+            foreach ($this->propertiesArr as $property => $type) {
                 $upper = ucfirst($property);
                 $fileContents .= "    <div class=\"form-group\">\n";
                 $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
@@ -610,7 +655,7 @@ class StartCommand extends Command
         $fileContents .= "<table class=\"table\">\n";
         $fileContents .= "<thead>\n";
         if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property) {
+            foreach ($this->propertiesArr as $property => $type) {
                 $fileContents .= "\t<th>" . ucfirst($property) . "</th>\n";
             }
         }
@@ -619,7 +664,7 @@ class StartCommand extends Command
         $fileContents .= "@foreach(\$" . $this->model->plural() . " as \$" . $this->model->lower() . ")\n";
         $fileContents .= "\t<tr>\n\t\t";
         if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property) {
+            foreach ($this->propertiesArr as $property => $type) {
                 $fileContents .= "<td><a href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">{{ \$" . $this->model->lower() . "->$property }}</a></td>";
             }
         }
@@ -644,7 +689,7 @@ class StartCommand extends Command
         $fileContents .= "<div class=\"row\">\n";
         $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "') }}\">\n";
         if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property) {
+            foreach ($this->propertiesArr as $property => $type) {
                 $upper = ucfirst($property);
                 $fileContents .= "    <div class=\"form-group\">\n";
                 $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
