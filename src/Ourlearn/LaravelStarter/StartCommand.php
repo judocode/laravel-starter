@@ -736,7 +736,7 @@ class StartCommand extends Command
             curl_close($ch);
             fclose($fp);
 
-            $this->fileContents .= "<script src=\"/$type/$assetName.$type\"></script>\n";
+            $this->fileContents .= "<script src=\"{{ url('$type/$assetName.$type') }}\"></script>\n";
             $this->info("public/$type/$assetName.$type created!");
         }
     }
@@ -802,7 +802,7 @@ class StartCommand extends Command
                 $this->downloadAsset("ember", "http://builds.emberjs.com/tags/v1.4.0/ember.min.js");
                 $this->downloadAsset("backbone", "http://backbonejs.org/backbone-min.js");
 
-                $this->fileContents .= "<script src=\"/js/main.js\"></script>\n";
+                $this->fileContents .= "<script src=\"{{ url('js/main.js') }}\"></script>\n";
                 $this->fileContents .= "</body>\n";
                 $this->fileContents .= "</html>\n";
                 \File::put($layoutPath, $this->fileContents);
