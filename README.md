@@ -29,5 +29,4 @@ Run `php artisan start` and the guided setup will help you with the rest!
 ## Future ideas
 
 - Automatically create js file based on js framework that is specified.
-- Automatically add relationships with keywords "belongsTo", "hasMany", "belongsToMany", and "hasOne"
 - Automatically generate fake seed data using faker
