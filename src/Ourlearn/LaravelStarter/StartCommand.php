@@ -325,18 +325,22 @@ class StartCommand extends Command
 
     private function createSeeds()
     {
-        $functionContent = "\t\t\$".$this->model->plural()." = array(\n";
+        $functionContent = "\t\t\$faker = \$this->getFaker();\n\n";
+        $functionContent .= "\t\tfor(\$i = 0; \$i < 10; \$i++) {\n";
+
+        $functionContent .= "\t\t\t\$".$this->model->lower()." = array(\n";
 
         foreach($this->propertiesArr as $property) {
-            $functionContent .= "\t\t\t'$property' => 'Testing ".$this->model->lower(). $property."',\n";
+            $functionContent .= "\t\t\t\t'$property' => 'Testing ".$this->model->lower(). $property."',\n";
         }
-        $functionContent .= "\t\t);\n";
-        $functionContent .= "\t\tDB::table('".$this->model->plural()."')->insert(\$".$this->model->plural().");\n";
+        $functionContent .= "\t\t\t);\n";
+        $functionContent .= "\t\t\t".$this->model->upper()."::create(\$".$this->model->lower().");\n";
+        $functionContent .= "\t\t}\n";
 
         $fileContents = $this->createFunction("run", $functionContent);
 
         $fileName = "app/database/seeds/" . $this->model->upperPlural() . "TableSeeder.php";
-        $this->createClass($fileName, $fileContents, ['name' => 'Seeder']);
+        $this->createClass($fileName, $fileContents, ['name' => 'DatabaseSeeder']);
 
         $databaseSeederPath = app_path() . '/database/seeds/DatabaseSeeder.php';
         $tableSeederClassName = $this->model->upperPlural() . 'TableSeeder';
