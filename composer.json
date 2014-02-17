@@ -8,13 +8,13 @@
         }
     ],
     "require": {
-        "php": ">=5.4.0"
+        "php": ">=5.4.0",
+        "fzaninotto/faker": "1.4.*"
     },
     "require-dev": {
         "illuminate/support": "~4",
         "illuminate/console": "~4",
-        "illuminate/filesystem": "~4",
-        "fzaninotto/faker": "1.4.*"
+        "illuminate/filesystem": "~4"
     },
     "autoload": {
         "psr-0": {
