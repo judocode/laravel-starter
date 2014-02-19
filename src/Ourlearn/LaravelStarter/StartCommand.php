@@ -1,6 +1,7 @@
 <?php namespace Ourlearn\LaravelStarter;
 
 use Illuminate\Console\Command;
+use Psr\Log\InvalidArgumentException;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 use Faker\Factory;
@@ -10,6 +11,7 @@ class StartCommand extends Command
     protected $name = 'start';
     protected $description = "Makes table, controller, model, views, seeds, and repository";
 
+    private $laravelClasses = array();
     private $propertiesArr = array();
     private $propertiesStr = "";
     private $model;
@@ -26,6 +28,11 @@ class StartCommand extends Command
 
     public function fire()
     {
+        $aliases = \Config::get('app.aliases');
+        foreach ($aliases as $alias => $facade) {
+            array_push($this->laravelClasses, strtolower($alias));
+        }
+
         $this->generateLayoutFiles();
 
         $this->info('Add model with its fields or type "q" to quit.');
@@ -50,6 +57,23 @@ class StartCommand extends Command
             $this->namespace = substr($modelWithNamespace, 0, strrpos($modelWithNamespace, "\\"));
 
             $this->model = new Model($model, $this->namespace);
+
+            while(in_array($this->model->lower(), $this->laravelClasses)) {
+                $modelAndFields = $this->ask($this->model->upper() ." is already in the global namespace. Please namespace your class or provide a different name: ");
+                $this->namespace = "";
+
+                $values = explode(" ", $modelAndFields);
+                $modelWithNamespace = $values[0];
+
+                if(strpos($modelWithNamespace, "\\"))
+                    $model = substr(strrchr($modelWithNamespace, "\\"), 1);
+                else
+                    $model = $modelWithNamespace;
+
+                $this->namespace = substr($modelWithNamespace, 0, strrpos($modelWithNamespace, "\\"));
+
+                $this->model = new Model($model, $this->namespace);
+            }
 
             $this->propertiesArr = array();
             $this->propertiesStr = "";
@@ -358,11 +382,21 @@ class StartCommand extends Command
             if($property == "password") {
                 $functionContent .= "\t\t\t\t'$property' => \\Hash::make('password'),\n";
             } else {
-                if(property_exists($faker, $property)) {
-                    $functionContent .= "\t\t\t\t'$property' => \$faker->".$property.",\n";
-                } else if(property_exists($faker, $type)) {
-                    $functionContent .= "\t\t\t\t'$property' => \$faker->".$type.",\n";
-                } else {
+                $fakerProperty = "";
+                try {
+
+                    $fakerProperty2 = $faker->getFormatter($property);
+                    $fakerProperty = $property;
+                } catch (\InvalidArgumentException $e) { }
+
+                if(empty($fakerProperty)) {
+                    try {
+                        $fakerProperty2 = $faker->getFormatter($type);
+                        $fakerProperty = $type;
+                    } catch (\InvalidArgumentException $e) { }
+                }
+
+                if(empty($fakerProperty)) {
                     $fakerType = "";
                     switch($type) {
                         case "integer":
@@ -374,9 +408,11 @@ class StartCommand extends Command
                     }
 
                     $fakerType = $fakerType ? "\$faker->".$fakerType : "";
-
-                    $functionContent .= "\t\t\t\t'$property' => $fakerType,\n";
+                } else {
+                    $fakerType = "\$faker->".$fakerProperty;
                 }
+
+                $functionContent .= "\t\t\t\t'$property' => $fakerType,\n";
 
             }
         }
@@ -545,7 +581,7 @@ class StartCommand extends Command
         array_push($functions, ['name' => 'testCreate', 'content' => $functionContents]);
 
         $getPath = $this->isResource ? "/1/edit" : "/edit/1";
-        
+
         $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . $getPath."');\n";
         $functionContents .= "\t\t\$this->assertResponseOk();\n";
         array_push($functions, ['name' => 'testEdit', 'content' => $functionContents]);
