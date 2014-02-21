@@ -44,6 +44,7 @@ class StartCommand extends Command
 
         while( $moreTables )
         {
+            $this->relationship = array();
             $this->namespace = "";
 
             $values = explode(" ", $modelAndFields);
