@@ -81,6 +81,6 @@ class Relation
 
     public function getReverseName(Model $model, $type)
     {
-        return $this->getName($model, $type);
+        return $this->getName($model, strtolower($type));
     }
 }
