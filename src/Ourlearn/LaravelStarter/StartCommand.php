@@ -1045,7 +1045,7 @@ class StartCommand extends Command
                 $this->fileContents .= "<div class=\"row row-offcanvas row-offcanvas-right\">\n";
 
                 $this->fileContents .= "<div class=\"col-xs-12 col-sm-9\">\n";
-                $this->fileContents .= "\t@yield('content')\n";
+                $this->fileContents .= "\t@section('content')\n";
                 $this->fileContents .= "<p class=\"pull-right visible-xs\">\n";
                 $this->fileContents .= "<button type=\"button\" class=\"btn btn-primary btn-xs\" data-toggle=\"offcanvas\">Toggle nav</button>\n";
                 $this->fileContents .= "</p>\n";
