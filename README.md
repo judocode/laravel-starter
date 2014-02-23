@@ -30,7 +30,7 @@ Run `php artisan start` and the guided setup will help you with the rest!
 
 Within the command, there is a prompt to ask if you want to add tables, the syntax is simple!
 
-`Book name:string published:datetime`
+`Book title:string published:datetime`
 
 Or you can get fancy and add a relationship:
 
