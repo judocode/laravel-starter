@@ -28,25 +28,31 @@ Run `php artisan start` and the guided setup will help you with the rest!
 
 ### Accepted arguments at the add model prompt
 
-Within the command, there is a prompt to ask if you want to add tables, which now supports adding a relationship. So, you can type:
+Within the command, there is a prompt to ask if you want to add tables, the syntax is simple!
 
-`Book belongsTo Author title:string published:integer`
+`Book name:string published:datetime`
 
-... and this will automatically add the "author" method to your Book model, and add "author_id" to your migration table. You can also include namespaces:
+Or you can get fancy and add a relationship:
 
-`BarnesAndNoble\Book belongsTo Author title:string published:integer`
+`Book belongsTo Author title:string published:datetime`
+
+... and this will automatically add the "author" method to your Book model, and add "author_id" to your migration table. It will also check to see if the author table has been or will be created before book and auto-assign the foreign key.
+
+You can also include namespaces:
+
+`BarnesAndNoble\Book belongsTo Author title:string published:datetime`
 
 Don't feel like typing everything all proper? That's fine too!
 
-`book belongsto author title:string published:integer`
+`book belongsto author title:string published:datetime`
 
 You can also add multiple relationships!
 
-`Book belongsTo Author, hasMany Word title:string published:integer`
+`Book belongsTo Author, hasMany Word title:string published:datetime`
 
-Have a lot of properties that are "strings" or "integers" etc? No problem!
+Have a lot of properties that are "strings" or "integers" etc? No problem, just group them!
 
-`Book belongsTo Author string( title content description publisher ) published:integer`
+`Book belongsTo Author string( title content description publisher ) published:datetime`
 
 If you are using the above syntax, please strictly adhere to it (for now).
 
