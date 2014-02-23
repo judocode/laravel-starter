@@ -7,7 +7,7 @@ class Relation
 
     public function __construct($relationType, Model $model)
     {
-        $this->relationType = $relationType;
+        $this->relationType = strtolower($relationType);
         $this->model = $model;
     }
 
@@ -15,16 +15,16 @@ class Relation
     {
         $reverseRelations = array();
         switch($this->relationType) {
-            case "belongsTo":
+            case "belongsto":
                 $reverseRelations = array('hasOne', 'hasMany');
                 break;
-            case "hasOne":
+            case "hasone":
                 $reverseRelations = array('belongsTo');
                 break;
-            case "belongsToMany":
+            case "belongstomany":
                 $reverseRelations = array('belongsToMany');
                 break;
-            case "hasMany":
+            case "hasmany":
                 $reverseRelations = array('belongsTo');
                 break;
         }
@@ -39,7 +39,20 @@ class Relation
 
     public function getType()
     {
-        return $this->relationType;
+        switch($this->relationType) {
+            case "belongsto":
+                return "belongsTo";
+                break;
+            case "hasone":
+                return "hasOne";
+                break;
+            case "belongstomany":
+                return "belongsToMany";
+                break;
+            case "hasmany":
+                return "hasMany";
+                break;
+        }
     }
 
     public function getName(Model $model = null, $type = "")
@@ -53,12 +66,12 @@ class Relation
             $model = $this->model;
 
         switch($type) {
-            case "belongsTo":
-            case "hasOne":
+            case "belongsto":
+            case "hasone":
                 $relationName = $model->lower();
                 break;
-            case "belongsToMany":
-            case "hasMany":
+            case "belongstomany":
+            case "hasmany":
                 $relationName = $model->plural();
                 break;
         }

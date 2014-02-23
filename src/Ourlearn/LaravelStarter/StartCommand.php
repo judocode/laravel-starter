@@ -35,11 +35,18 @@ class StartCommand extends Command
 
         $this->generateLayoutFiles();
 
-        $this->info('Add model with its fields or type "q" to quit.');
-        $this->info('Example with namespace: MyNamespace\Book title:string year:integer');
-        $this->info('Or with a relation: Book belongsTo Author title:string published:integer');
+        $modelAndFields = $this->ask('Add model with its relations and fields or type "q" to quit (type info for examples) ');
 
-        $modelAndFields = $this->ask('Now your turn: ');
+        if($modelAndFields == "info") {
+            $this->info('Add model with its fields or type "q" to quit (type info for examples) ');
+            $this->info('MyNamespace\Book title:string year:integer');
+            $this->info('With relation: Book belongsTo Author title:string published:integer');
+            $this->info('Multiple relations: University hasMany Course, Department name:string city:string state:string homepage:string )');
+            $this->info('Or group like properties: University hasMany Department string( name city state homepage )');
+
+            $modelAndFields = $this->ask('Now your turn: ');
+        }
+
         $moreTables = $modelAndFields == "q" ? false : true;
 
         while( $moreTables )
@@ -84,32 +91,75 @@ class StartCommand extends Command
 
             if( $additionalFields )
             {
-                if(!strpos($values[1], ":")) {
+                if($this->nextArgumentIsRelation($values[1])) {
                     $relationship = $values[1];
-                    $relatedTable = $values[2];
+                    $relatedTable = trim($values[2], ',');
 
-                    $this->relationship = array(new Relation($relationship, new Model($relatedTable)));
+                    $i = 3;
+                    end($values);
+                    $lastIndex = key($values);
+                    $this->relationship = array();
+                    array_push($this->relationship, new Relation($relationship, new Model($relatedTable)));
+
+                    while($i <= $lastIndex && $this->nextArgumentIsRelation($values[$i])) {
+                        if(strpos($values[$i], ",") === false) {
+                            $next = $i + 1;
+                            if($this->isLastRelation($values, $next, $lastIndex)) {
+                                $relationship = $values[$i];
+                                $relatedTable = trim($values[$next], ',');
+                                $i++;
+                                unset($values[$next]);
+                            } else {
+                                $relatedTable = $values[$i];
+                            }
+                        } else {
+                            $relatedTable = trim($values[$i], ',');
+                        }
+                        array_push($this->relationship, new Relation($relationship, new Model($relatedTable)));
+                        unset($values[$i]);
+                        $i++;
+                    }
 
                     unset($values[1]);
                     unset($values[2]);
                 }
 
                 $this->fieldNames = $values;
+                $bundled = false;
+                $fieldName = "";
+                $type = "";
 
                 foreach($this->fieldNames as $field)
                 {
+                    $skip = false;
                     $pos = strrpos($field, ":");
-                    if ($pos !== false)
+                    if ($pos !== false && !$bundled)
                     {
                         $type = substr($field, $pos+1);
-                        $field = substr($field, 0, $pos);
+                        $fieldName = substr($field, 0, $pos);
+                    } else if(strpos($field, '(') !== false) {
+                        $type = substr($field, 0, strpos($field, '('));
+                        $bundled = true;
+                        $skip = true;
+                    } else if($bundled) {
+                        if($pos !== false && strpos($field, ")") === false) {
+                            $fieldName = substr($field, $pos+1);
+                            $num = substr($field, 0, $pos);
+                        } else if(strpos($field, ")") !== false){
+                            $skip = true;
+                            $bundled = false;
+                        } else {
+                            $fieldName = $field;
+                        }
                     }
 
-                    $this->propertiesArr[$field] = $type;
-                    $this->propertiesStr .= "'".$field ."',";
+                    if(!$skip) {
+                        $this->propertiesArr[$fieldName] = $type;
+                        $this->propertiesStr .= "'".$fieldName ."',";
+                    }
                 }
 
-                $this->propertiesStr = substr($this->propertiesStr, 0, strlen($this->propertiesStr)-1);
+                $this->propertiesStr = trim($this->propertiesStr, ',');
             }
 
             $this->createModel();
@@ -153,6 +203,16 @@ class StartCommand extends Command
         $this->info('Done!');
     }
 
+    private function isLastRelation($values, $next, $lastIndex)
+    {
+        return ($next <= $lastIndex && $this->nextArgumentIsRelation($values[$next]));
+    }
+
+    private function nextArgumentIsRelation($value)
+    {
+        return strpos($value, ":") === false && strpos($value, "(") === false;
+    }
+
     protected function getArguments()
     {
         return array(
@@ -192,27 +252,88 @@ class StartCommand extends Command
                 $tableOne = $this->model->lower();
                 $tableTwo = $relation->model->lower();
 
-                if($tableOne[0] > $tableTwo[0])
-                    $tableName = $tableTwo ."_".$tableOne;
-                else
-                    $tableName = $tableOne ."_".$tableTwo;
+                $tableName = $this->getPivotTableName($tableOne, $tableTwo);
 
-                $content .= "\t\tif(!Schema::hasTable('".$tableName."')) {\n";
-                $content .= "\t\t\tSchema::create('".$tableName."', function(Blueprint \$table) {\n";
-                $content .= "\t\t\t\t\$table->integer('".$tableOne."_id')->unsigned();\n";
-                $content .= "\t\t\t\t\$table->integer('".$tableTwo."_id')->unsigned();\n";
-                $content .= "\t\t\t});\n";
-                $content .= "\t\t}\n";
+                if(!$this->isTableCreated($tableName)) {
+                    $content .= "\t\tSchema::create('".$tableName."', function(Blueprint \$table) {\n";
+                    $content .= "\t\t\t\$table->integer('".$tableOne."_id')->unsigned();\n";
+                    $content .= "\t\t\t\$table->integer('".$tableTwo."_id')->unsigned();\n";
+                    $content .= "\t\t});\n";
+                }
             } else if($relation->getType() == "hasOne" || $relation->getType() == "hasMany") {
-                $content .= "\t\tif(Schema::hasColumn('".$relation->model->plural()."','".$this->model->lower()."_id')) {\n";
-                $content .= "\t\t\tSchema::table('".$relation->model->plural()."', function(Blueprint \$table) {\n";
-                $content .= "\t\t\t\t\$table->foreign('". $this->model->lower()."_id')->references('id')->on('".$this->model->plural()."');\n";
-                $content .= "\t\t\t});\n";
-                $content .= "\t\t}\n";
+                if($this->tableHasColumn($relation->model->plural() ,$this->model->lower()."_id")) {
+                    $content .= "\t\tSchema::table('".$relation->model->plural()."', function(Blueprint \$table) {\n";
+                    $content .= "\t\t\t\$table->foreign('". $this->model->lower()."_id')->references('id')->on('".$this->model->plural()."');\n";
+                    $content .= "\t\t});\n";
+                }
             }
         }
         return $content;
     }
+
+    private function tableHasColumn($tableName, $columnName)
+    {
+        if(\Schema::hasColumn($tableName, $columnName)) {
+            return true;
+        }
+
+        $found = false;
+
+        if ($handle = opendir('app/database/migrations')) {
+            while (false !== ($entry = readdir($handle))) {
+                if ($entry != "." && $entry != ".." && $entry != ".gitkeep") {
+                    $fileName = 'app/database/migrations/'.$entry;
+
+                    $contents = \File::get($fileName);
+                    $matched = preg_match("/Schema::(table|create).*'$tableName',.*\(.*\).*{.*'$columnName'.*}\);/s", $contents);
+                    if($matched !== false && $matched != 0) {
+                        $found = true;
+                        break;
+                    }
+                }
+            }
+            closedir($handle);
+        }
+
+        return $found;
+    }
+
+    private function getPivotTableName($tableOne, $tableTwo)
+    {
+        if($tableOne[0] > $tableTwo[0])
+            $tableName = $tableTwo ."_".$tableOne;
+        else
+            $tableName = $tableOne ."_".$tableTwo;
+
+        return $tableName;
+    }
+
+    private function isTableCreated($tableName)
+    {
+        $found = false;
+        if(\Schema::hasTable($tableName)) {
+            return true;
+        }
+
+        if ($handle = opendir('app/database/migrations')) {
+            while (false !== ($entry = readdir($handle))) {
+                if ($entry != "." && $entry != "..") {
+                    $fileName = 'app/database/migrations/'.$entry;
+
+                    $contents = \File::get($fileName);
+                    if(strpos($contents, "Schema::create('$tableName'") !== false) {
+                        $found = true;
+                        break;
+                    }
+                }
+            }
+            closedir($handle);
+        }
+
+        return $found;
+    }
+
+    private $fillForeignKeys = array();
 
     private function addForeignKeys()
     {
@@ -222,7 +343,10 @@ class StartCommand extends Command
                 $foreignKey = $relation->model->lower() . "_id";
                 $fields .= "\t\t\t" .$this->setColumn('integer', $foreignKey);
                 $fields .= $this->addColumnOption('unsigned') . ";\n";
-                //$fields .= "\t\t\t\$table->foreign('". $foreignKey."')->references('id')->on('".$relation->model->plural()."');\n";
+                if($this->isTableCreated($relation->model->plural())) {
+                    $fields .= "\t\t\t\$table->foreign('". $foreignKey."')->references('id')->on('".$relation->model->plural()."');\n";
+                    array_push($this->fillForeignKeys, $foreignKey);
+                }
             }
         }
         return $fields;
@@ -249,18 +373,10 @@ class StartCommand extends Command
     {
         $content = '';
 
-        if(!empty($this->fieldNames))
+        if(!empty($this->propertiesArr))
         {
             // Build up the schema
-            foreach( $this->fieldNames as $arg ) {
-                // Like age, integer, and nullable
-                @list($field, $type, $setting) = explode(':', $arg);
-
-                if ( !$type )
-                {
-                    echo "There was an error in your formatting. Please try again. Did you specify both a field and data type for each? age:int\n";
-                    die();
-                }
+            foreach( $this->propertiesArr as $field => $type ) {
 
                 $rule = "\t\t\t";
 
@@ -323,25 +439,24 @@ class StartCommand extends Command
             }
 
             if($continue) {
-                $index = 0;
-
-                $reverseRelations = $relation->reverseRelations();
-
-                if(count($reverseRelations) > 1) {
-                    $index = $this->ask("How does " . $relatedModel->upper() . " relate back to ". $this->model->upper() ."? (0=".$reverseRelations[0]. " 1=".$reverseRelations[1] .") ");
-                }
-
-                $reverseRelationType = $reverseRelations[$index];
-                $reverseRelationName = $relation->getReverseName($this->model, $reverseRelationType);
-
                 $content = \File::get($relatedModelFile);
                 if (preg_match("/function ".$this->model->lower()."/", $content) !== 1 && preg_match("/function ".$this->model->plural()."/", $content) !== 1) {
+                    $index = 0;
+                    $reverseRelations = $relation->reverseRelations();
+
+                    if(count($reverseRelations) > 1) {
+                        $index = $this->ask("How does " . $relatedModel->upper() . " relate back to ". $this->model->upper() ."? (0=".$reverseRelations[0]. " 1=".$reverseRelations[1] .") ");
+                    }
+
+                    $reverseRelationType = $reverseRelations[$index];
+                    $reverseRelationName = $relation->getReverseName($this->model, $reverseRelationType);
+
                     $content = substr($content, 0, strrpos($content, "}"));
                     $functionContent = "\t\treturn \$this->" . $reverseRelationType . "('".$this->model->nameWithNamespace()."');\n";
                     $content .= $this->createFunction($reverseRelationName, $functionContent) . "}\n";
-                }
 
-                \File::put($relatedModelFile, $content);
+                    \File::put($relatedModelFile, $content);
+                }
             }
         }
 
@@ -374,7 +489,7 @@ class StartCommand extends Command
         }
 
         $functionContent = "\t\t\$faker = \$this->getFaker();\n\n";
-        $functionContent .= "\t\tfor(\$i = 0; \$i < 10; \$i++) {\n";
+        $functionContent .= "\t\tfor(\$i = 1; \$i <= 10; \$i++) {\n";
 
         $functionContent .= "\t\t\t\$".$this->model->lower()." = array(\n";
 
@@ -417,6 +532,11 @@ class StartCommand extends Command
 
             }
         }
+
+        foreach($this->fillForeignKeys as $key) {
+            $functionContent .= "\t\t\t\t'$key' => \$i,\n";
+        }
+
         $functionContent .= "\t\t\t);\n";
         $functionContent .= "\t\t\t".$this->model->upper()."::create(\$".$this->model->lower().");\n";
         $functionContent .= "\t\t}\n";
@@ -519,7 +639,7 @@ class StartCommand extends Command
         if ($this->isResource)
             $functionNames = ['constructor' => '__construct', 'index' => 'index', 'create' => 'create', 'store' => 'store', 'show' => 'show', 'edit' => 'edit', 'update' => 'update', 'destroy' => 'destroy'];
         else
-            $functionNames = ['constructor' => '__construct', 'index' => 'getIndex', 'create' => 'getCreate', 'store' => 'postIndex', 'show' => 'getDetails', 'edit' => 'getEdit', 'update' => 'putIndex', 'destroy' => 'deleteIndex'];
+            $functionNames = ['constructor' => '__construct', 'index' => 'getIndex', 'create' => 'getCreate', 'store' => 'postIndex', 'show' => 'getDetails', 'edit' => 'getEdit', 'update' => 'postUpdate', 'destroy' => 'deleteIndex'];
 
         $functions = array();
 
@@ -546,8 +666,12 @@ class StartCommand extends Command
         $functionContents .= "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".edit')->with('" . $this->model->lower() . "', \$" . $this->model->lower() . ");\n";
         array_push($functions, ['name' => $functionNames['edit'], 'content' => $functionContents, 'args' => "\$id"]);
 
-        $functionContents = "        \$" . $this->model->lower() . " = \$this->" . $this->model->lower() . "->update(\$id, \\Input::only([" . $this->propertiesStr . "]));\n";
-        $functionContents .= "        return \\Redirect::to('" . $this->model->lower() . "/'.\$id);\n";
+        $functionContents = "        \$this->" . $this->model->lower() . "->update(\$id, \\Input::only([" . $this->propertiesStr . "]));\n";
+        if($this->isResource)
+            $functionContents .= "        return \\Redirect::to('" . $this->model->lower() . "/'.\$id);\n";
+        else
+            $functionContents .= "        return \\Redirect::to('" . $this->model->lower() . "/details/'.\$id);\n";
+
         array_push($functions, ['name' => $functionNames['update'], 'content' => $functionContents, 'args' => "\$id"]);
 
         $functionContents = "        \$this->" . $this->model->lower() . "->destroy(\$id);\n";
@@ -632,7 +756,11 @@ class StartCommand extends Command
         $fileContents = "@section('content')\n";
         $fileContents .= "<div class=\"row\">\n";
         $fileContents .= "    <h1>Viewing " . $this->model->lower() . "</h1>\n";
-        $fileContents .= "    <a class=\"btn\" href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id.'/edit') }}\">Edit</a>\n";
+        if($this->isResource)
+            $fileContents .= "    <a class=\"btn\" href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id.'/edit') }}\">Edit</a>\n";
+        else
+            $fileContents .= "    <a class=\"btn\" href=\"{{ url('" . $this->model->lower() . "/edit/'.\$" . $this->model->lower() . "->id) }}\">Edit</a>\n";
+
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
         $fileContents .= "    <ul>\n";
@@ -658,8 +786,12 @@ class StartCommand extends Command
         $fileContents .= "    <h2>Edit " . $this->model->lower() . "</h2>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">\n";
-        $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
+        if($this->isResource) {
+            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">\n";
+            $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
+        } else {
+            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/update/'.\$" . $this->model->lower() . "->id) }}\">\n";
+        }
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property => $type) {
                 $upper = ucfirst($property);
@@ -704,7 +836,10 @@ class StartCommand extends Command
         $fileContents .= "\t<tr>\n\t\t";
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property => $type) {
-                $fileContents .= "<td><a href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">{{ \$" . $this->model->lower() . "->$property }}</a></td>";
+                if($this->isResource)
+                    $fileContents .= "<td><a href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">{{ \$" . $this->model->lower() . "->$property }}</a></td>";
+                else
+                    $fileContents .= "<td><a href=\"{{ url('" . $this->model->lower() . "/details/'.\$" . $this->model->lower() . "->id) }}\">{{ \$" . $this->model->lower() . "->$property }}</a></td>";
             }
         }
         $fileContents .= "\n\t</tr>\n";
@@ -824,11 +959,158 @@ class StartCommand extends Command
                 $this->fileContents .= "\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
                 $this->fileContents .= "\t<title>Untitled</title>\n";
                 $this->fileContents .= "<!-- CSS -->\n";
-                $this->fileContents .= "\t<link rel=\"stylesheet\" href=\"/css/style.css\">\n";
+                $this->fileContents .= "\t<link rel=\"stylesheet\" href=\"{{ url('css/style.css') }}\">\n";
+                $this->fileContents .= "<style>\n";
+                $this->fileContents .= "html, body {\n";
+                $this->fileContents .= "overflow-x: hidden;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= "body {\n";
+                $this->fileContents .= "padding-top: 70px;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= "footer {\n";
+                $this->fileContents .= "padding: 30px 0;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= "@media screen and (max-width: 767px) {\n";
+                $this->fileContents .= ".row-offcanvas {\n";
+                $this->fileContents .= "position: relative;\n";
+                $this->fileContents .= "-webkit-transition: all .25s ease-out;\n";
+                $this->fileContents .= "-moz-transition: all .25s ease-out;\n";
+                $this->fileContents .= "transition: all .25s ease-out;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= ".row-offcanvas-right {\n";
+                $this->fileContents .= "    right: 0;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= ".row-offcanvas-left {\n";
+                $this->fileContents .= "    left: 0;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= ".row-offcanvas-right\n";
+                $this->fileContents .= ".sidebar-offcanvas {\n";
+                $this->fileContents .= "    right: -50%;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= ".row-offcanvas-left\n";
+                $this->fileContents .= ".sidebar-offcanvas {\n";
+                $this->fileContents .= "    left: -50%;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= ".row-offcanvas-right.active {\n";
+                $this->fileContents .= "    right: 50%;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= ".row-offcanvas-left.active {\n";
+                $this->fileContents .= "    left: 50%;\n";
+                $this->fileContents .= "}\n";
+
+                $this->fileContents .= ".sidebar-offcanvas {\n";
+                $this->fileContents .= "    position: absolute;\n";
+                $this->fileContents .= "    top: 0;\n";
+                $this->fileContents .= "    width: 50%;\n";
+                $this->fileContents .= "}\n";
+                $this->fileContents .= "}\n";
+                $this->fileContents .= "</style>\n";
+                $this->fileContents .= "<!--[if lt IE 9]>\n";
+                $this->fileContents .= "<script src=\"https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js\"></script>\n";
+                $this->fileContents .= "<script src=\"https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js\"></script>\n";
+                $this->fileContents .= "<![endif]-->\n";
                 $this->fileContents .= "</head>\n";
                 $this->fileContents .= "<body>\n";
+                $this->fileContents .= "<div class=\"navbar navbar-fixed-top navbar-inverse\" role=\"navigation\">\n";
                 $this->fileContents .= "<div class=\"container\">\n";
+                $this->fileContents .= "<div class=\"navbar-header\">\n";
+                $this->fileContents .= "<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\".navbar-collapse\">\n";
+                $this->fileContents .= "<span class=\"sr-only\">Toggle navigation</span>\n";
+                $this->fileContents .= "<span class=\"icon-bar\"></span>\n";
+                $this->fileContents .= "<span class=\"icon-bar\"></span>\n";
+                $this->fileContents .= "<span class=\"icon-bar\"></span>\n";
+                $this->fileContents .= "</button>\n";
+                $this->fileContents .= "<a class=\"navbar-brand\" href=\"#\">Project name</a>\n";
+                $this->fileContents .= "</div>\n";
+                $this->fileContents .= "<div class=\"collapse navbar-collapse\">\n";
+                $this->fileContents .= "<ul class=\"nav navbar-nav\">\n";
+                $this->fileContents .= "<li class=\"active\"><a href=\"#\">Home</a></li>\n";
+                $this->fileContents .= "<li><a href=\"#about\">About</a></li>\n";
+                $this->fileContents .= "<li><a href=\"#contact\">Contact</a></li>\n";
+                $this->fileContents .= "</ul>\n";
+                $this->fileContents .= "</div><!-- /.nav-collapse -->\n";
+                $this->fileContents .= "</div><!-- /.container -->\n";
+                $this->fileContents .= " </div><!-- /.navbar -->\n";
+
+                $this->fileContents .= "<div class=\"container\">\n";
+
+                $this->fileContents .= "<div class=\"row row-offcanvas row-offcanvas-right\">\n";
+
+                $this->fileContents .= "<div class=\"col-xs-12 col-sm-9\">\n";
                 $this->fileContents .= "\t@yield('content')\n";
+                $this->fileContents .= "<p class=\"pull-right visible-xs\">\n";
+                $this->fileContents .= "<button type=\"button\" class=\"btn btn-primary btn-xs\" data-toggle=\"offcanvas\">Toggle nav</button>\n";
+                $this->fileContents .= "</p>\n";
+                $this->fileContents .= "<div class=\"jumbotron\">\n";
+                $this->fileContents .= "<h1>Hello, world!</h1>\n";
+                $this->fileContents .= "<p>This is an example to show the potential of an offcanvas layout pattern in Bootstrap. Try some responsive-range viewport sizes to see it in action.</p>\n";
+                $this->fileContents .= "</div>\n";
+                $this->fileContents .= "<div class=\"row\">\n";
+                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
+                $this->fileContents .= "<h2>Heading</h2>\n";
+                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
+                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
+                $this->fileContents .= "</div><!--/span-->\n";
+                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
+                $this->fileContents .= "<h2>Heading</h2>\n";
+                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
+                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
+                $this->fileContents .= "</div><!--/span-->\n";
+                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
+                $this->fileContents .= "<h2>Heading</h2>\n";
+                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui.</p>\n";
+                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
+                $this->fileContents .= "</div><!--/span-->\n";
+                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
+                $this->fileContents .= "<h2>Heading</h2>\n";
+                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
+                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
+                $this->fileContents .= "</div><!--/span-->\n";
+                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
+                $this->fileContents .= "<h2>Heading</h2>\n";
+                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
+                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
+                $this->fileContents .= "</div><!--/span-->\n";
+                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
+                $this->fileContents .= "<h2>Heading</h2>\n";
+                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
+                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
+                $this->fileContents .= "</div><!--/span-->\n";
+                $this->fileContents .= " </div><!--/row-->\n";
+                $this->fileContents .= "@show\n";
+                $this->fileContents .= " </div><!--/span-->\n";
+
+                $this->fileContents .= " <div class=\"col-xs-6 col-sm-3 sidebar-offcanvas\" id=\"sidebar\" role=\"navigation\">\n";
+                $this->fileContents .= "<div class=\"list-group\">\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item active\">Link</a>\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= " <a href=\"#\" class=\"list-group-item\">Link</a>\n";
+                $this->fileContents .= " </div>\n";
+                $this->fileContents .= "</div><!--/span-->\n";
+                $this->fileContents .= "</div><!--/row-->\n";
+
+                $this->fileContents .= "<hr>\n";
+
+                $this->fileContents .= "<footer>\n";
+                $this->fileContents .= "<p>&copy; Company 2014</p>\n";
+                $this->fileContents .= " </footer>\n";
+
                 $this->fileContents .= "</div>\n";
 
                 $this->downloadAsset("jquery", "http://code.jquery.com/jquery-1.11.0.min.js");
