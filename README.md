@@ -26,13 +26,29 @@ That's it! You're all set to go. Run the `artisan` command from the Terminal to 
 
 Run `php artisan start` and the guided setup will help you with the rest!
 
-## Cool stuff
+### Accepted arguments at the add model prompt
 
 Within the command, there is a prompt to ask if you want to add tables, which now supports adding a relationship. So, you can type:
 
 `Book belongsTo Author title:string published:integer`
 
-... and this will automatically add the "author" method to your Book model, and add "author_id" to your migration table.
+... and this will automatically add the "author" method to your Book model, and add "author_id" to your migration table. You can also include namespaces:
+
+`BarnesAndNoble\Book belongsTo Author title:string published:integer`
+
+Don't feel like typing everything all proper? That's fine too!
+
+`book belongsto author title:string published:integer`
+
+You can also add multiple relationships!
+
+`Book belongsTo Author, hasMany Word title:string published:integer`
+
+Have a lot of properties that are "strings" or "integers" etc? No problem!
+
+`Book belongsTo Author string( title content description publisher ) published:integer`
+
+If you are using the above syntax, please strictly adhere to it (for now).
 
 ## Additional comments
 
