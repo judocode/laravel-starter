@@ -152,7 +152,7 @@ class StartCommand extends Command
                         }
                     }
 
-                    if(!$skip) {
+                    if(!$skip && !empty($fieldName)) {
                         $this->propertiesArr[$fieldName] = $type;
                         $this->propertiesStr .= "'".$fieldName ."',";
                     }
