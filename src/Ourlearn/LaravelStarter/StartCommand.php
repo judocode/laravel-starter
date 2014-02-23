@@ -38,7 +38,6 @@ class StartCommand extends Command
         $modelAndFields = $this->ask('Add model with its relations and fields or type "q" to quit (type info for examples) ');
 
         if($modelAndFields == "info") {
-            $this->info('Add model with its fields or type "q" to quit (type info for examples) ');
             $this->info('MyNamespace\Book title:string year:integer');
             $this->info('With relation: Book belongsTo Author title:string published:integer');
             $this->info('Multiple relations: University hasMany Course, Department name:string city:string state:string homepage:string )');
