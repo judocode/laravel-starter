@@ -538,13 +538,16 @@ class StartCommand extends Command
         }
 
         $functionContent .= "\t\t\t);\n";
-        $functionContent .= "\t\t\t".$this->model->upper()."::create(\$".$this->model->lower().");\n";
+
+        $namespace = $this->namespace ? $this->namespace . "\\" : "";
+
+        $functionContent .= "\t\t\t". $namespace . $this->model->upper()."::create(\$".$this->model->lower().");\n";
         $functionContent .= "\t\t}\n";
 
         $fileContents = $this->createFunction("run", $functionContent);
 
         $fileName = "app/database/seeds/" . $this->model->upperPlural() . "TableSeeder.php";
-        $this->createClass($fileName, $fileContents, ['name' => 'DatabaseSeeder']);
+        $this->createClass($fileName, $fileContents, ['name' => 'DatabaseSeeder'], array(), array(), "class", false);
 
         $tableSeederClassName = $this->model->upperPlural() . 'TableSeeder';
 
