@@ -639,7 +639,7 @@ class StartCommand extends Command
         if ($this->isResource)
             $functionNames = ['constructor' => '__construct', 'index' => 'index', 'create' => 'create', 'store' => 'store', 'show' => 'show', 'edit' => 'edit', 'update' => 'update', 'destroy' => 'destroy'];
         else
-            $functionNames = ['constructor' => '__construct', 'index' => 'getIndex', 'create' => 'getCreate', 'store' => 'postIndex', 'show' => 'getDetails', 'edit' => 'getEdit', 'update' => 'postUpdate', 'destroy' => 'deleteIndex'];
+            $functionNames = ['constructor' => '__construct', 'index' => 'getIndex', 'create' => 'getCreate', 'store' => 'postIndex', 'show' => 'getDetails', 'edit' => 'getEdit', 'update' => 'postUpdate', 'destroy' => 'getDelete'];
 
         $functions = array();
 
@@ -759,20 +759,22 @@ class StartCommand extends Command
         $fileContents .= "<div class=\"row\">\n";
         $fileContents .= "    <h1>Viewing " . $this->model->lower() . "</h1>\n";
         if($this->isResource)
-            $fileContents .= "    <a class=\"btn\" href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id.'/edit') }}\">Edit</a>\n";
+            $fileContents .= "    <a class=\"btn btn-primary\" href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id.'/edit') }}\">Edit</a>\n";
         else
-            $fileContents .= "    <a class=\"btn\" href=\"{{ url('" . $this->model->lower() . "/edit/'.\$" . $this->model->lower() . "->id) }}\">Edit</a>\n";
+            $fileContents .= "    <a class=\"btn btn-primary\" href=\"{{ url('" . $this->model->lower() . "/edit/'.\$" . $this->model->lower() . "->id) }}\">Edit</a>\n";
+
+        $fileContents .= "    <a class=\"btn btn-danger\" href=\"{{ url('" . $this->model->lower() . "/delete/'.\$" . $this->model->lower() . "->id) }}\">Delete</a>\n";
 
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <ul>\n";
+        $fileContents .= "    <table class=\"table\">\n";
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property => $type) {
                 $upper = ucfirst($property);
-                $fileContents .= "        <li>$upper: {{ \$" . $this->model->lower() . "->" . $property . " }}</li>";
+                $fileContents .= "        <tr><td>$upper:</td> <td>{{ \$" . $this->model->lower() . "->" . $property . " }}</td></tr>";
             }
         }
-        $fileContents .= "    <ul>\n";
+        $fileContents .= "    </table>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "@stop\n";
         $this->createFile($fileName, $fileContents);
@@ -789,24 +791,24 @@ class StartCommand extends Command
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
         if($this->isResource) {
-            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">\n";
+            $fileContents .= "    <form class=\"form-horizontal\" role=\"form\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">\n";
             $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
         } else {
-            $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/update/'.\$" . $this->model->lower() . "->id) }}\">\n";
+            $fileContents .= "    <form class=\"form-horizontal\" role=\"form\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/update/'.\$" . $this->model->lower() . "->id) }}\">\n";
         }
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property => $type) {
                 $upper = ucfirst($property);
                 $fileContents .= "    <div class=\"form-group\">\n";
                 $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
-                $fileContents .= "        <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$" . $this->model->lower() . "->$property }}\">\n";
+                $fileContents .= "        <input class=\"form-control\" type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$" . $this->model->lower() . "->$property }}\">\n";
                 $fileContents .= "    </div>\n";
             }
         }
         $fileContents .= "    <div class=\"form-group\">\n";
         $fileContents .= "        <label class=\"control-label\"></label>\n";
-        $fileContents .= "        <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
-        $fileContents .= "        <input class=\"btn\" type=\"submit\" value=\"Edit " . $this->model->lower() . "\">\n";
+        $fileContents .= "        <input class=\"btn btn-warning\" type=\"reset\" value=\"Reset\">\n";
+        $fileContents .= "        <input class=\"btn btn-success\" type=\"submit\" value=\"Edit " . $this->model->lower() . "\">\n";
         $fileContents .= "    </div>\n";
         $fileContents .= "    </form>\n";
         $fileContents .= "</div>\n";
@@ -863,21 +865,22 @@ class StartCommand extends Command
         $fileContents .= "    <h2>New " . $this->model->upper() . "</h2>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <form class=\"form-horizontal\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "') }}\">\n";
+        $fileContents .= "    <form class=\"form-horizontal\" role=\"form\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "') }}\">\n";
         if ($this->propertiesArr) {
             foreach ($this->propertiesArr as $property => $type) {
                 $upper = ucfirst($property);
                 $fileContents .= "    <div class=\"form-group\">\n";
                 $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
-                $fileContents .= "        <input type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\">\n";
+                $fileContents .= "        <input class=\"form-control\" type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\">\n";
                 $fileContents .= "    </div>\n";
             }
         }
         $fileContents .= "    <div class=\"form-group\">\n";
         $fileContents .= "        <label class=\"control-label\"></label>\n";
-        $fileContents .= "        <input class=\"btn\" type=\"reset\" value=\"Reset\">\n";
-        $fileContents .= "        <input class=\"btn\" type=\"submit\" value=\"Add New " . $this->model->lower() . "\">\n";
+        $fileContents .= "        <input class=\"btn btn-warning\" type=\"reset\" value=\"Reset\">\n";
+        $fileContents .= "        <input class=\"btn btn-success\" type=\"submit\" value=\"Add New " . $this->model->lower() . "\">\n";
         $fileContents .= "    </div>\n";
+        $fileContents .= "    </form>\n";
         $fileContents .= "</div>\n";
         $fileContents .= "@stop\n";
         $this->createFile($fileName, $fileContents);
