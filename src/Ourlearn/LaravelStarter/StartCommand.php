@@ -407,6 +407,7 @@ class StartCommand extends Command
             while (true) {
                 try {
                     $this->call('migrate');
+                    $this->call('db:seed');
                     break;
                 } catch (\Exception $e) {
                     $this->info('Error: ' . $e->getMessage());
@@ -727,7 +728,9 @@ class StartCommand extends Command
     {
         $routeFile = "app/routes.php";
 
-        $fileContents = "\nApp::bind('" . $this->model->nameWithNamespace() . "RepositoryInterface','" . $this->namespace . "Eloquent" . $this->model->upper() . "Repository');\n";
+        $namespace = $this->namespace ? $this->namespace . "\\" : "";
+
+        $fileContents = "\nApp::bind('" . $this->model->nameWithNamespace() . "RepositoryInterface','" . $namespace . "Eloquent" . $this->model->upper() . "Repository');\n";
 
         $routeType = $this->isResource ? "resource" : "controller";
 
@@ -1186,17 +1189,19 @@ class StartCommand extends Command
                 }
                 zip_close($zip);
                 \File::delete('public/bootstrap.zip');
+
+                rename('public/dist', 'public/bootstrap');
             }
 
-            $fileReplace = "\t<link href=\"{{ url('dist/css/bootstrap.min.css') }}\" rel=\"stylesheet\">\n";
+            $fileReplace = "\t<link href=\"{{ url('bootstrap/css/bootstrap.min.css') }}\" rel=\"stylesheet\">\n";
             $fileReplace .= "\t<style>\n";
             $fileReplace .= "\t\tbody {\n";
             $fileReplace .= "\t\tpadding-top: 60px;\n";
             $fileReplace .= "\t\t}\n";
             $fileReplace .= "\t</style>\n";
-            $fileReplace .= "\t<link href=\"{{ url('dist/css/bootstrap-theme.min.css') }}\" rel=\"stylesheet\">\n";
+            $fileReplace .= "\t<link href=\"{{ url('bootstrap/css/bootstrap-theme.min.css') }}\" rel=\"stylesheet\">\n";
             $this->fileContents = preg_replace('/<!-- CSS -->/',  $fileReplace, $this->fileContents);
-            $this->fileContents .= "<script src=\"{{ url('dist/js/bootstrap.min.js') }}\"></script>\n";
+            $this->fileContents .= "<script src=\"{{ url('bootstrap/js/bootstrap.min.js') }}\"></script>\n";
             $this->info("Bootstrap files loaded to public/bootstrap!");
         }
         else
