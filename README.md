@@ -59,6 +59,9 @@ If you are using the above syntax, please strictly adhere to it (for now).
 ## Additional comments
 
 The seeder now uses faker in order to randomly generate 10 rows in each table. It will try to determine the type, but you can open the seed file to verify. For more information on Faker: https://github.com/fzaninotto/Faker
+
+This now utilizes template files, so you can specify the format for your views, controller, repository, and tests in a folder called "templates" in your app directory.
+
 ## Future ideas
 
 - Automatically create js file based on js framework that is specified.
