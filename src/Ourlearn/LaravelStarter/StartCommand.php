@@ -581,7 +581,7 @@ class StartCommand extends Command
     {
         $fileName = "app/repositories/interfaces/" . $this->model->upper() . "RepositoryInterface.php";
 
-        $fileContents = \File::get($this->pathToTemplates."repository-interface.php");
+        $fileContents = \File::get($this->pathToTemplates."repository-interface.txt");
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
         $this->createFile($fileName, $fileContents);
@@ -594,7 +594,7 @@ class StartCommand extends Command
     {
         $fileName = 'app/repositories/Eloquent' . $this->model->upper() . 'Repository.php';
 
-        $fileContents = \File::get($this->pathToTemplates."eloquent-repository.php");
+        $fileContents = \File::get($this->pathToTemplates."eloquent-repository.txt");
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
         $this->createFile($fileName, $fileContents);
@@ -627,7 +627,7 @@ class StartCommand extends Command
     {
         $fileName = "app/controllers/" . $this->model->upper() . "Controller.php";
 
-        $fileContents = \File::get($this->templatePathWithControllerType."controller.php");
+        $fileContents = \File::get($this->templatePathWithControllerType."controller.txt");
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
         $this->createFile($fileName, $fileContents);
@@ -690,7 +690,7 @@ class StartCommand extends Command
         foreach($views as $view) {
             $fileName = $dir . "$view.blade.php";
 
-            $fileContents = \File::get($pathToViews."$view.php");
+            $fileContents = \File::get($pathToViews."$view.txt");
 
             $fileContents = $this->replaceModels($fileContents);
             $fileContents = $this->replaceProperties($fileContents);
@@ -804,7 +804,7 @@ class StartCommand extends Command
 
             if(!\File::exists($layoutPath) || $overwrite)
             {
-                $this->fileContents = \File::get($this->pathToTemplates.'layout.php');
+                $this->fileContents = \File::get($this->pathToTemplates.'layout.txt');
 
                 $this->downloadAsset("jquery", "http://code.jquery.com/jquery-1.11.0.min.js");
 
