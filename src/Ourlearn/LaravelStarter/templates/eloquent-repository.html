@@ -1,0 +1,45 @@
+<?php 
+
+class Eloquent[Model]Repository implements [Model]RepositoryInterface 
+{
+	private $[model];
+
+	public function __construct([Model] $[model])
+	{
+		$this->[model] = $[model];
+	}
+
+	public function all()
+	{
+		return $this->[model]->all();
+	}
+
+	public function find($id)
+	{
+		return $this->[model]->find($id);
+	}
+
+	public function store($input)
+	{
+        $[model] = new [Model];
+        [repeat]
+        $[model]->[property] = $input['[property]'];
+        [/repeat]
+        $[model]->save();
+	}
+
+	public function update($id, $input)
+	{
+		$[model] = $this->find($id);
+		[repeat]
+        $[model]->[property] = $input['[property]'];
+        [/repeat]
+        $[model]->save();
+	}
+
+	public function destroy($id)
+	{
+		$this->find($id)->delete();
+	}
+
+}

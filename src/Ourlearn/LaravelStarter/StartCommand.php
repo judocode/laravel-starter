@@ -20,6 +20,9 @@ class StartCommand extends Command
     private $isResource;
     private $fieldNames;
     private $fileContents;
+    private $controllerType;
+    private $pathToTemplates = "vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/";
+    private $templatePathWithControllerType;
 
     public function __construct()
     {
@@ -161,9 +164,21 @@ class StartCommand extends Command
                 $this->propertiesStr = trim($this->propertiesStr, ',');
             }
 
+            if(!\File::isDirectory($this->pathToTemplates))
+            {
+                $this->rcopy("vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/", $this->pathToTemplates);
+            }
+
             $this->createModel();
 
             $this->isResource = $this->confirm('Do you want resource (y) or restful (n) controllers? ');
+
+            if($this->isResource)
+                $this->controllerType = "resource";
+            else
+                $this->controllerType = "restful";
+
+            $this->templatePathWithControllerType = $this->pathToTemplates . $this->controllerType ."/";
 
             $this->createMigrations();
 
@@ -566,13 +581,10 @@ class StartCommand extends Command
     {
         $fileName = "app/repositories/interfaces/" . $this->model->upper() . "RepositoryInterface.php";
 
-        $fileContents = "\tpublic function all();\n";
-        $fileContents .= "\tpublic function find(\$id);\n";
-        $fileContents .= "\tpublic function store(\$input);\n";
-        $fileContents .= "\tpublic function update(\$id, \$input);\n";
-        $fileContents .= "\tpublic function destroy(\$id);\n";
-
-        $this->createInterface($fileName, $fileContents);
+        $fileContents = \File::get($this->pathToTemplates."repository-interface.html");
+        $fileContents = $this->replaceModels($fileContents);
+        $fileContents = $this->replaceProperties($fileContents);
+        $this->createFile($fileName, $fileContents);
     }
 
     /**
@@ -580,36 +592,12 @@ class StartCommand extends Command
      */
     private function createRepository()
     {
-        $functions = array();
-
-        $functionContents = "\t\t\$this->" . $this->model->lower() . " = \$" . $this->model->lower() . ";\n";
-        array_push($functions, ['name' => '__construct', 'content' => $functionContents, 'args' => $this->model->upper() . " \$" . $this->model->lower()]);
-        $functionContents = "\t\treturn \$this->" . $this->model->lower() . "->all();\n";
-        array_push($functions, ['name' => 'all', 'content' => $functionContents]);
-        $functionContents = "\t\treturn \$this->" . $this->model->lower() . "->find(\$id);\n";
-        array_push($functions, ['name' => 'find', 'content' => $functionContents, 'args' => "\$id"]);
-        $functionContents = "        \$" . $this->model->lower() . " = new " . $this->model->upper() . ";\n";
-        foreach ($this->propertiesArr as $property => $type) {
-            $functionContents .= "        \$" . $this->model->lower() . "->" . $property . " = \$input['" . $property . "'];\n";
-        }
-        $functionContents .= "        \$" . $this->model->lower() . "->save();\n";
-        array_push($functions, ['name' => 'store', 'content' => $functionContents, 'args' => "\$input"]);
-        $functionContents = "\t\t\$" . $this->model->lower() . " = \$this->find(\$id);\n";
-        foreach ($this->propertiesArr as $property => $type) {
-            $functionContents .= "        \$" . $this->model->lower() . "->" . $property . " = \$input['" . $property . "'];\n";
-        }
-        $functionContents .= "        \$" . $this->model->lower() . "->save();\n";
-        array_push($functions, ['name' => 'update', 'content' => $functionContents, 'args' => "\$id, \$input"]);
-        $functionContents = "\t\t\$this->find(\$id)->delete();\n";
-        array_push($functions, ['name' => 'destroy', 'content' => $functionContents, 'args' => "\$id"]);
-
-        $fileContents = $this->createFunctions($functions);
-
         $fileName = 'app/repositories/Eloquent' . $this->model->upper() . 'Repository.php';
-        $vars = ["private" => $this->model->lower()];
-        $extends = ['type' => 'implements', "name"=>$this->model->upper() . "RepositoryInterface"];
 
-        $this->createClass($fileName, $fileContents, $extends, $vars);
+        $fileContents = \File::get($this->pathToTemplates."eloquent-repository.html");
+        $fileContents = $this->replaceModels($fileContents);
+        $fileContents = $this->replaceProperties($fileContents);
+        $this->createFile($fileName, $fileContents);
 
         $this->info($this->model->upper().'Repository created!');
     }
@@ -639,50 +627,10 @@ class StartCommand extends Command
     {
         $fileName = "app/controllers/" . $this->model->upper() . "Controller.php";
 
-        if ($this->isResource)
-            $functionNames = ['constructor' => '__construct', 'index' => 'index', 'create' => 'create', 'store' => 'store', 'show' => 'show', 'edit' => 'edit', 'update' => 'update', 'destroy' => 'destroy'];
-        else
-            $functionNames = ['constructor' => '__construct', 'index' => 'getIndex', 'create' => 'getCreate', 'store' => 'postIndex', 'show' => 'getDetails', 'edit' => 'getEdit', 'update' => 'postUpdate', 'destroy' => 'getDelete'];
-
-        $functions = array();
-
-        $functionContents = "\t\t\$this->" . $this->model->lower() . " = \$" . $this->model->lower() . ";\n";
-        array_push($functions, ['name' => $functionNames['constructor'], 'content' => $functionContents, 'args' => $this->model->upper() . "RepositoryInterface \$" . $this->model->lower()]);
-
-        $functionContents = "    \t\$" . $this->model->plural() . " = \$this->" . $this->model->lower() . "->all();\n";
-        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".all', compact('" . $this->model->plural() . "'));\n";
-        array_push($functions, ['name' => $functionNames['index'], 'content' => $functionContents]);
-
-        $functionContents = "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".new');\n";
-        array_push($functions, ['name' => $functionNames['create'], 'content' => $functionContents]);
-
-        $functionContents = "        \$this->" . $this->model->lower() . "->store(\\Input::only(" . $this->propertiesStr . "));\n";
-        $functionContents .= "        return \\Redirect::to('" . $this->model->lower() . "');\n";
-        array_push($functions, ['name' => $functionNames['store'], 'content' => $functionContents]);
-
-        $functionContents = "        \$" . $this->model->lower() . " = \$this->" . $this->model->lower() . "->find(\$id);\n";
-        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".view')->with('" . $this->model->lower() . "', \$" . $this->model->lower() . ");\n";
-        $functionContents .= "        //return Response::json(['" . $this->model->lower() . "' => \$" . $this->model->lower() . "]);\n";
-        array_push($functions, ['name' => $functionNames['show'], 'content' => $functionContents, 'args' => "\$id"]);
-
-        $functionContents = "        \$" . $this->model->lower() . " = \$this->" . $this->model->lower() . "->find(\$id);\n";
-        $functionContents .= "        \$this->layout->content = \\View::make('" . $this->model->lower() . ".edit')->with('" . $this->model->lower() . "', \$" . $this->model->lower() . ");\n";
-        array_push($functions, ['name' => $functionNames['edit'], 'content' => $functionContents, 'args' => "\$id"]);
-
-        $functionContents = "        \$this->" . $this->model->lower() . "->update(\$id, \\Input::only([" . $this->propertiesStr . "]));\n";
-        if($this->isResource)
-            $functionContents .= "        return \\Redirect::to('" . $this->model->lower() . "/'.\$id);\n";
-        else
-            $functionContents .= "        return \\Redirect::to('" . $this->model->lower() . "/details/'.\$id);\n";
-
-        array_push($functions, ['name' => $functionNames['update'], 'content' => $functionContents, 'args' => "\$id"]);
-
-        $functionContents = "        \$this->" . $this->model->lower() . "->destroy(\$id);\n";
-        array_push($functions, ['name' => $functionNames['destroy'], 'content' => $functionContents, 'args' => "\$id"]);
-
-        $fileContents = $this->createFunctions($functions);
-
-        $this->createClass($fileName, $fileContents, ["name"=>"\\BaseController"], ['protected' => $this->model->lower()]);
+        $fileContents = \File::get($this->templatePathWithControllerType."controller.html");
+        $fileContents = $this->replaceModels($fileContents);
+        $fileContents = $this->replaceProperties($fileContents);
+        $this->createFile($fileName, $fileContents);
 
         $this->info($this->model->upper() . 'Controller created!');
     }
@@ -692,36 +640,18 @@ class StartCommand extends Command
      */
     private function createTestsFile()
     {
-        $functions = array();
-
-        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . "');\n";
-        $functionContents .= "\t\t\$this->assertResponseOk();\n";
-        array_push($functions, ['name' => 'testIndex', 'content' => $functionContents]);
-
-        $getPath = $this->isResource ? "" : "details/";
-
-        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . "/" . $getPath . "1');\n";
-        $functionContents .= "\t\t\$this->assertResponseOk();\n";
-        array_push($functions, ['name' => 'testShow', 'content' => $functionContents]);
-
-        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . "/create');\n";
-        $functionContents .= "\t\t\$this->assertResponseOk();\n";
-        array_push($functions, ['name' => 'testCreate', 'content' => $functionContents]);
-
-        $getPath = $this->isResource ? "/1/edit" : "/edit/1";
-
-        $functionContents = "\t\t\$this->call('GET', '" . $this->model->lower() . $getPath."');\n";
-        $functionContents .= "\t\t\$this->assertResponseOk();\n";
-        array_push($functions, ['name' => 'testEdit', 'content' => $functionContents]);
-
-        $fileContents = $this->createFunctions($functions);
+        $dir = "app/views/" . $this->model->lower() . "/";
+        if (!\File::isDirectory($dir))
+            \File::makeDirectory($dir);
 
         $fileName = "app/tests/controller/" . $this->model->upperPlural() . "ControllerTest.php";
 
-        $this->createClass($fileName, $fileContents, ["name" => "\\TestCase"]);
+        $fileContents = \File::get($this->templatePathWithControllerType."test.html");
+        $fileContents = $this->replaceModels($fileContents);
+        $fileContents = $this->replaceProperties($fileContents);
+        $this->createFile($fileName, $fileContents);
 
         $this->info('Tests created!');
-        return array($fileContents, $fileName);
     }
 
     /**
@@ -749,145 +679,61 @@ class StartCommand extends Command
 
     private function createViews()
     {
-        /*******************************************************************
-         *
-         *                   view.blade.php
-         *
-         ********************************************************************/
+        $views = array('view', 'edit', 'create', 'all');
+
         $dir = "app/views/" . $this->model->lower() . "/";
         if (!\File::isDirectory($dir))
             \File::makeDirectory($dir);
-        $fileName = $dir . "view.blade.php";
-        $fileContents = "@section('content')\n";
-        $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <h1>Viewing " . $this->model->lower() . "</h1>\n";
-        if($this->isResource)
-            $fileContents .= "    <a class=\"btn btn-primary\" href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id.'/edit') }}\">Edit</a>\n";
-        else
-            $fileContents .= "    <a class=\"btn btn-primary\" href=\"{{ url('" . $this->model->lower() . "/edit/'.\$" . $this->model->lower() . "->id) }}\">Edit</a>\n";
 
-        $fileContents .= "    <a class=\"btn btn-danger\" href=\"{{ url('" . $this->model->lower() . "/delete/'.\$" . $this->model->lower() . "->id) }}\">Delete</a>\n";
+        $pathToViews = $this->pathToTemplates.$this->controllerType."/";
 
-        $fileContents .= "</div>\n";
-        $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <table class=\"table\">\n";
-        if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property => $type) {
-                $upper = ucfirst($property);
-                $fileContents .= "        <tr><td>$upper:</td> <td>{{ \$" . $this->model->lower() . "->" . $property . " }}</td></tr>";
-            }
-        }
-        $fileContents .= "    </table>\n";
-        $fileContents .= "</div>\n";
-        $fileContents .= "@stop\n";
-        $this->createFile($fileName, $fileContents);
+        foreach($views as $view) {
+            $fileName = $dir . "$view.blade.php";
 
-        /*******************************************************************
-         *
-         *                  edit.blade.php
-         *
-         ********************************************************************/
-        $fileName = $dir . "edit.blade.php";
-        $fileContents = "@section('content')\n";
-        $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <h2>Edit " . $this->model->lower() . "</h2>\n";
-        $fileContents .= "</div>\n";
-        $fileContents .= "<div class=\"row\">\n";
-        if($this->isResource) {
-            $fileContents .= "    <form class=\"form-horizontal\" role=\"form\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">\n";
-            $fileContents .= "    <input type=\"hidden\" name=\"_method\" value=\"PUT\">\n";
-        } else {
-            $fileContents .= "    <form class=\"form-horizontal\" role=\"form\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "/update/'.\$" . $this->model->lower() . "->id) }}\">\n";
-        }
-        if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property => $type) {
-                $upper = ucfirst($property);
-                $fileContents .= "    <div class=\"form-group\">\n";
-                $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
-                $fileContents .= "        <input class=\"form-control\" type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\" value=\"{{ \$" . $this->model->lower() . "->$property }}\">\n";
-                $fileContents .= "    </div>\n";
-            }
-        }
-        $fileContents .= "    <div class=\"form-group\">\n";
-        $fileContents .= "        <label class=\"control-label\"></label>\n";
-        $fileContents .= "        <input class=\"btn btn-warning\" type=\"reset\" value=\"Reset\">\n";
-        $fileContents .= "        <input class=\"btn btn-success\" type=\"submit\" value=\"Edit " . $this->model->lower() . "\">\n";
-        $fileContents .= "    </div>\n";
-        $fileContents .= "    </form>\n";
-        $fileContents .= "</div>\n";
-        $fileContents .= "@stop\n";
-        $this->createFile($fileName, $fileContents);
+            $fileContents = \File::get($pathToViews."$view.html");
 
-        /*******************************************************************
-         *
-         *                  all.blade.php
-         *
-         ********************************************************************/
-        $fileName = $dir . "all.blade.php";
-        $fileContents = "@section('content')\n";
-        $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <h1>All " . $this->model->upperPlural() . "</h1>\n";
-        $fileContents .= "    <a class=\"btn\" href=\"{{ url('".$this->model->lower()."/create') }}\">New</a>\n";
-        $fileContents .= "</div>\n";
-        $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "<table class=\"table\">\n";
-        $fileContents .= "<thead>\n";
-        if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property => $type) {
-                $fileContents .= "\t<th>" . ucfirst($property) . "</th>\n";
-            }
+            $fileContents = $this->replaceModels($fileContents);
+            $fileContents = $this->replaceProperties($fileContents);
+            $this->createFile($fileName, $fileContents);
         }
-        $fileContents .= "</thead>\n";
-        $fileContents .= "<tbody>\n";
-        $fileContents .= "@foreach(\$" . $this->model->plural() . " as \$" . $this->model->lower() . ")\n";
-        $fileContents .= "\t<tr>\n\t\t";
-        if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property => $type) {
-                if($this->isResource)
-                    $fileContents .= "<td><a href=\"{{ url('" . $this->model->lower() . "/'.\$" . $this->model->lower() . "->id) }}\">{{ \$" . $this->model->lower() . "->$property }}</a></td>";
-                else
-                    $fileContents .= "<td><a href=\"{{ url('" . $this->model->lower() . "/details/'.\$" . $this->model->lower() . "->id) }}\">{{ \$" . $this->model->lower() . "->$property }}</a></td>";
-            }
-        }
-        $fileContents .= "\n\t</tr>\n";
-        $fileContents .= "@endforeach\n";
-        $fileContents .= "</tbody>\n";
-        $fileContents .= "</table>\n";
-        $fileContents .= "</div>\n";
-        $fileContents .= "@stop\n";
-        $this->createFile($fileName, $fileContents);
 
-        /*******************************************************************
-         *
-         *                   new.blade.php
-         *
-         ********************************************************************/
-        $fileName = $dir . "new.blade.php";
-        $fileContents = "@section('content')\n";
-        $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <h2>New " . $this->model->upper() . "</h2>\n";
-        $fileContents .= "</div>\n";
-        $fileContents .= "<div class=\"row\">\n";
-        $fileContents .= "    <form class=\"form-horizontal\" role=\"form\" method=\"POST\" action=\"{{ url('" . $this->model->lower() . "') }}\">\n";
-        if ($this->propertiesArr) {
-            foreach ($this->propertiesArr as $property => $type) {
-                $upper = ucfirst($property);
-                $fileContents .= "    <div class=\"form-group\">\n";
-                $fileContents .= "        <label class=\"control-label\" for=\"$property\">$upper</label>\n";
-                $fileContents .= "        <input class=\"form-control\" type=\"text\" name=\"$property\" id=\"$property\" placeholder=\"$upper\">\n";
-                $fileContents .= "    </div>\n";
-            }
-        }
-        $fileContents .= "    <div class=\"form-group\">\n";
-        $fileContents .= "        <label class=\"control-label\"></label>\n";
-        $fileContents .= "        <input class=\"btn btn-warning\" type=\"reset\" value=\"Reset\">\n";
-        $fileContents .= "        <input class=\"btn btn-success\" type=\"submit\" value=\"Add New " . $this->model->lower() . "\">\n";
-        $fileContents .= "    </div>\n";
-        $fileContents .= "    </form>\n";
-        $fileContents .= "</div>\n";
-        $fileContents .= "@stop\n";
-        $this->createFile($fileName, $fileContents);
         $this->info('Views created!');
+    }
+
+    private function replaceModels($fileContents)
+    {
+        $modelReplaces = array('[model]'=>$this->model->lower(), '[Model]'=>$this->model->upper(), '[models]'=>$this->model->plural(), '[Models]'=>$this->model->upperPlural());
+        foreach($modelReplaces as $model => $name) {
+            $fileContents = str_replace($model, $name, $fileContents);
+        }
+
+        return $fileContents;
+    }
+
+    private function replaceProperties($fileContents)
+    {
+        $lastPos = 0;
+        $needle = "[repeat]";
+        $endRepeat = "[/repeat]";
+
+        while (($lastPos = strpos($fileContents, $needle, $lastPos))!== false) {
+            $beginning = $lastPos;
+            $lastPos = $lastPos + strlen($needle);
+            $endProp = strpos($fileContents, $endRepeat, $lastPos);
+            $end = $endProp + strlen($endRepeat);
+            $replaceThis = substr($fileContents, $beginning, $end-$beginning);
+            $propertyTemplate = substr($fileContents, $lastPos, $endProp - $lastPos);
+            $properties = "";
+            foreach($this->propertiesArr as $property => $type) {
+                $temp = str_replace("[property]", $property, $propertyTemplate);
+                $temp = str_replace("[Property]", ucfirst($property), $temp);
+                $properties .= $temp;
+            }
+            $properties = trim($properties, ",");
+            $fileContents = str_replace($replaceThis, $properties, $fileContents);
+        }
+
+        return $fileContents;
     }
 
     private function downloadAsset($assetName, $downloadLocation)
@@ -918,7 +764,7 @@ class StartCommand extends Command
             curl_close($ch);
             fclose($fp);
 
-            $this->fileContents .= "<script src=\"{{ url('$type/$assetName.$type') }}\"></script>\n";
+            $this->fileContents = str_replace("<!--[javascript]-->", "<script src=\"{{ url('$type/$assetName.$type') }}\"></script>\n<!--[javascript]-->", $this->fileContents);
             $this->info("public/$type/$assetName.$type created!");
         }
     }
@@ -958,168 +804,7 @@ class StartCommand extends Command
 
             if(!\File::exists($layoutPath) || $overwrite)
             {
-                $this->fileContents = "<!DOCTYPE html>\n";
-                $this->fileContents .= "<html lang=\"en\">\n";
-                $this->fileContents .= "<head>\n";
-                $this->fileContents .= "\t<meta charset=\"utf-8\">\n";
-                $this->fileContents .= "\t<meta name=\"description\" content=\"\">\n";
-                $this->fileContents .= "\t<meta name=\"author\" content=\"\">\n";
-                $this->fileContents .= "\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
-                $this->fileContents .= "\t<title>Untitled</title>\n";
-                $this->fileContents .= "<!-- CSS -->\n";
-                $this->fileContents .= "\t<link rel=\"stylesheet\" href=\"{{ url('css/style.css') }}\">\n";
-                $this->fileContents .= "<style>\n";
-                $this->fileContents .= "html, body {\n";
-                $this->fileContents .= "overflow-x: hidden;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= "body {\n";
-                $this->fileContents .= "padding-top: 70px;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= "footer {\n";
-                $this->fileContents .= "padding: 30px 0;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= "@media screen and (max-width: 767px) {\n";
-                $this->fileContents .= ".row-offcanvas {\n";
-                $this->fileContents .= "position: relative;\n";
-                $this->fileContents .= "-webkit-transition: all .25s ease-out;\n";
-                $this->fileContents .= "-moz-transition: all .25s ease-out;\n";
-                $this->fileContents .= "transition: all .25s ease-out;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= ".row-offcanvas-right {\n";
-                $this->fileContents .= "    right: 0;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= ".row-offcanvas-left {\n";
-                $this->fileContents .= "    left: 0;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= ".row-offcanvas-right\n";
-                $this->fileContents .= ".sidebar-offcanvas {\n";
-                $this->fileContents .= "    right: -50%;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= ".row-offcanvas-left\n";
-                $this->fileContents .= ".sidebar-offcanvas {\n";
-                $this->fileContents .= "    left: -50%;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= ".row-offcanvas-right.active {\n";
-                $this->fileContents .= "    right: 50%;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= ".row-offcanvas-left.active {\n";
-                $this->fileContents .= "    left: 50%;\n";
-                $this->fileContents .= "}\n";
-
-                $this->fileContents .= ".sidebar-offcanvas {\n";
-                $this->fileContents .= "    position: absolute;\n";
-                $this->fileContents .= "    top: 0;\n";
-                $this->fileContents .= "    width: 50%;\n";
-                $this->fileContents .= "}\n";
-                $this->fileContents .= "}\n";
-                $this->fileContents .= "</style>\n";
-                $this->fileContents .= "<!--[if lt IE 9]>\n";
-                $this->fileContents .= "<script src=\"https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js\"></script>\n";
-                $this->fileContents .= "<script src=\"https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js\"></script>\n";
-                $this->fileContents .= "<![endif]-->\n";
-                $this->fileContents .= "</head>\n";
-                $this->fileContents .= "<body>\n";
-                $this->fileContents .= "<div class=\"navbar navbar-fixed-top navbar-inverse\" role=\"navigation\">\n";
-                $this->fileContents .= "<div class=\"container\">\n";
-                $this->fileContents .= "<div class=\"navbar-header\">\n";
-                $this->fileContents .= "<button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\".navbar-collapse\">\n";
-                $this->fileContents .= "<span class=\"sr-only\">Toggle navigation</span>\n";
-                $this->fileContents .= "<span class=\"icon-bar\"></span>\n";
-                $this->fileContents .= "<span class=\"icon-bar\"></span>\n";
-                $this->fileContents .= "<span class=\"icon-bar\"></span>\n";
-                $this->fileContents .= "</button>\n";
-                $this->fileContents .= "<a class=\"navbar-brand\" href=\"#\">Project name</a>\n";
-                $this->fileContents .= "</div>\n";
-                $this->fileContents .= "<div class=\"collapse navbar-collapse\">\n";
-                $this->fileContents .= "<ul class=\"nav navbar-nav\">\n";
-                $this->fileContents .= "<li class=\"active\"><a href=\"#\">Home</a></li>\n";
-                $this->fileContents .= "<li><a href=\"#about\">About</a></li>\n";
-                $this->fileContents .= "<li><a href=\"#contact\">Contact</a></li>\n";
-                $this->fileContents .= "</ul>\n";
-                $this->fileContents .= "</div><!-- /.nav-collapse -->\n";
-                $this->fileContents .= "</div><!-- /.container -->\n";
-                $this->fileContents .= " </div><!-- /.navbar -->\n";
-
-                $this->fileContents .= "<div class=\"container\">\n";
-
-                $this->fileContents .= "<div class=\"row row-offcanvas row-offcanvas-right\">\n";
-
-                $this->fileContents .= "<div class=\"col-xs-12 col-sm-9\">\n";
-                $this->fileContents .= "\t@section('content')\n";
-                $this->fileContents .= "<p class=\"pull-right visible-xs\">\n";
-                $this->fileContents .= "<button type=\"button\" class=\"btn btn-primary btn-xs\" data-toggle=\"offcanvas\">Toggle nav</button>\n";
-                $this->fileContents .= "</p>\n";
-                $this->fileContents .= "<div class=\"jumbotron\">\n";
-                $this->fileContents .= "<h1>Hello, world!</h1>\n";
-                $this->fileContents .= "<p>This is an example to show the potential of an offcanvas layout pattern in Bootstrap. Try some responsive-range viewport sizes to see it in action.</p>\n";
-                $this->fileContents .= "</div>\n";
-                $this->fileContents .= "<div class=\"row\">\n";
-                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
-                $this->fileContents .= "<h2>Heading</h2>\n";
-                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
-                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
-                $this->fileContents .= "</div><!--/span-->\n";
-                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
-                $this->fileContents .= "<h2>Heading</h2>\n";
-                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
-                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
-                $this->fileContents .= "</div><!--/span-->\n";
-                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
-                $this->fileContents .= "<h2>Heading</h2>\n";
-                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui.</p>\n";
-                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
-                $this->fileContents .= "</div><!--/span-->\n";
-                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
-                $this->fileContents .= "<h2>Heading</h2>\n";
-                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
-                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
-                $this->fileContents .= "</div><!--/span-->\n";
-                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
-                $this->fileContents .= "<h2>Heading</h2>\n";
-                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
-                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
-                $this->fileContents .= "</div><!--/span-->\n";
-                $this->fileContents .= "<div class=\"col-6 col-sm-6 col-lg-4\">\n";
-                $this->fileContents .= "<h2>Heading</h2>\n";
-                $this->fileContents .= "<p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>\n";
-                $this->fileContents .= "<p><a class=\"btn btn-default\" href=\"#\" role=\"button\">View details &raquo;</a></p>\n";
-                $this->fileContents .= "</div><!--/span-->\n";
-                $this->fileContents .= " </div><!--/row-->\n";
-                $this->fileContents .= "@show\n";
-                $this->fileContents .= " </div><!--/span-->\n";
-
-                $this->fileContents .= " <div class=\"col-xs-6 col-sm-3 sidebar-offcanvas\" id=\"sidebar\" role=\"navigation\">\n";
-                $this->fileContents .= "<div class=\"list-group\">\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item active\">Link</a>\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= "<a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= " <a href=\"#\" class=\"list-group-item\">Link</a>\n";
-                $this->fileContents .= " </div>\n";
-                $this->fileContents .= "</div><!--/span-->\n";
-                $this->fileContents .= "</div><!--/row-->\n";
-
-                $this->fileContents .= "<hr>\n";
-
-                $this->fileContents .= "<footer>\n";
-                $this->fileContents .= "<p>&copy; Company 2014</p>\n";
-                $this->fileContents .= " </footer>\n";
-
-                $this->fileContents .= "</div>\n";
+                $this->fileContents = \File::get('vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/layout.html');
 
                 $this->downloadAsset("jquery", "http://code.jquery.com/jquery-1.11.0.min.js");
 
@@ -1131,9 +816,6 @@ class StartCommand extends Command
                 $this->downloadAsset("ember", "http://builds.emberjs.com/tags/v1.4.0/ember.min.js");
                 $this->downloadAsset("backbone", "http://backbonejs.org/backbone-min.js");
 
-                $this->fileContents .= "<script src=\"{{ url('js/main.js') }}\"></script>\n";
-                $this->fileContents .= "</body>\n";
-                $this->fileContents .= "</html>\n";
                 \File::put($layoutPath, $this->fileContents);
             }
             else
@@ -1196,7 +878,12 @@ class StartCommand extends Command
                 zip_close($zip);
                 \File::delete('public/bootstrap.zip');
 
-                rename('public/dist', 'public/bootstrap');
+                $dirPath = 'public/dist';
+                $this->rcopy($dirPath, 'public/bootstrap');
+                foreach(new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dirPath, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST) as $path) {
+                    $path->isFile() ? unlink($path->getPathname()) : rmdir($path->getPathname());
+                }
+                rmdir($dirPath);
             }
 
             $fileReplace = "\t<link href=\"{{ url('bootstrap/css/bootstrap.min.css') }}\" rel=\"stylesheet\">\n";
@@ -1206,8 +893,9 @@ class StartCommand extends Command
             $fileReplace .= "\t\t}\n";
             $fileReplace .= "\t</style>\n";
             $fileReplace .= "\t<link href=\"{{ url('bootstrap/css/bootstrap-theme.min.css') }}\" rel=\"stylesheet\">\n";
-            $this->fileContents = preg_replace('/<!-- CSS -->/',  $fileReplace, $this->fileContents);
-            $this->fileContents .= "<script src=\"{{ url('bootstrap/js/bootstrap.min.js') }}\"></script>\n";
+            $fileReplace .= "<!--[css]-->\n";
+            $this->fileContents = str_replace("<!--[css]-->",  $fileReplace, $this->fileContents);
+            $this->fileContents = str_replace("<!--[javascript]-->", "<script src=\"{{ url('bootstrap/js/bootstrap.min.js') }}\"></script>\n<!--[javascript]-->", $this->fileContents);
             $this->info("Bootstrap files loaded to public/bootstrap!");
         }
         else
@@ -1254,9 +942,10 @@ class StartCommand extends Command
                     \File::deleteDirectory('public/js/vendor');
                     \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
                 }
-                $fileReplace = "\t<link href=\"{{ url ('css/foundation.min.css') }}\" rel=\"stylesheet\">\n";
-                $this->fileContents = preg_replace('/<!-- CSS -->/', $fileReplace, $this->fileContents);
-                $this->fileContents .= "<script src=\"{{ url ('/js/foundation.js') }}\"></script>\n";
+                $fileReplace = "\t<link href=\"{{ url ('css/foundation.min.css') }}\" rel=\"stylesheet\">\n<!--[css]-->";
+                $this->fileContents = str_replace("<!--[css]-->",  $fileReplace, $this->fileContents);
+                $this->fileContents = str_replace("<!--[javascript]-->", "<script src=\"{{ url ('/js/foundation.js') }}\"></script>\n<!--[javascript]-->", $this->fileContents);
+
                 $this->info('Foundation successfully set up (v4.0.5)!');
             }
         }
@@ -1376,5 +1065,30 @@ class StartCommand extends Command
             $fileContents .= $this->createFunction($function['name'], $function['content'], $args);
         }
         return $fileContents;
+    }
+
+    private function rcopy($src, $dst)
+    {
+        if (file_exists ( $dst ))
+            $this->rrmdir ( $dst );
+        if (is_dir ( $src )) {
+            mkdir ( $dst );
+            $files = scandir ( $src );
+            foreach ( $files as $file )
+                if ($file != "." && $file != "..")
+                    $this->rcopy ( "$src/$file", "$dst/$file" );
+        } else if (file_exists ( $src ))
+            copy ( $src, $dst );
+    }
+
+    private function rrmdir($dir)
+    {
+        if (is_dir($dir)) {
+            $files = scandir($dir);
+            foreach ($files as $file)
+                if ($file != "." && $file != "..") $this->rrmdir("$dir/$file");
+            rmdir($dir);
+        }
+        else if (file_exists($dir)) unlink($dir);
     }
 }
