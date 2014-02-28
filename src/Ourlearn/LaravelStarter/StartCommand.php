@@ -449,7 +449,7 @@ class StartCommand extends Command
             if(!\File::exists($relatedModelFile)) {
                 $continue = $this->confirm("Model ". $relatedModel->upper() . " doesn't exist yet. Would you like to create it now [y/n]? ", true);
                 if($continue) {
-                    $this->createClass($relatedModelFile, "", ['name' => "\\Eloquent"]);
+                    $this->createClass($relatedModelFile, "", array('name' => "\\Eloquent"));
                 }
             }
 
@@ -475,7 +475,7 @@ class StartCommand extends Command
             }
         }
 
-        $this->createClass($fileName, $fileContents, ["name" => "\\Eloquent"]);
+        $this->createClass($fileName, $fileContents, array("name" => "\\Eloquent"));
 
         $this->info('Model "'.$this->model->upper().'" created!');
     }
@@ -562,7 +562,7 @@ class StartCommand extends Command
         $fileContents = $this->createFunction("run", $functionContent);
 
         $fileName = "app/database/seeds/" . $this->model->upperPlural() . "TableSeeder.php";
-        $this->createClass($fileName, $fileContents, ['name' => 'DatabaseSeeder'], array(), array(), "class", false);
+        $this->createClass($fileName, $fileContents, array('name' => 'DatabaseSeeder'), array(), array(), "class", false);
 
         $tableSeederClassName = $this->model->upperPlural() . 'TableSeeder';
 
@@ -969,7 +969,7 @@ class StartCommand extends Command
     public function createMigrationClass($path, $content, $name)
     {
         $className = "Create" . $name . "Table";
-        $this->createClass($path, $content, ['name' => 'Migration'], array(), ['Illuminate\Database\Migrations\Migration', 'Illuminate\Database\Schema\Blueprint'], "class", $className, false, true);
+        $this->createClass($path, $content, array('name' => 'Migration'), array(), array('Illuminate\Database\Migrations\Migration', 'Illuminate\Database\Schema\Blueprint'), "class", $className, false, true);
     }
 
     public function createClass($path, $content, array $extends = array(), $vars = array(), array $uses = array(), $type = "class", $customName = "", $useNamespace = true, $overwrite = false)
