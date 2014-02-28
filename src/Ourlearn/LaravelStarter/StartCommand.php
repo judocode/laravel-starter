@@ -36,6 +36,11 @@ class StartCommand extends Command
             array_push($this->laravelClasses, strtolower($alias));
         }
 
+        if(!\File::isDirectory($this->pathToTemplates))
+        {
+            $this->rcopy("vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/", $this->pathToTemplates);
+        }
+
         $this->generateLayoutFiles();
 
         $modelAndFields = $this->ask('Add model with its relations and fields or type "q" to quit (type info for examples) ');
@@ -646,7 +651,7 @@ class StartCommand extends Command
 
         $fileName = "app/tests/controller/" . $this->model->upperPlural() . "ControllerTest.php";
 
-        $fileContents = \File::get($this->templatePathWithControllerType."test.php");
+        $fileContents = \File::get($this->templatePathWithControllerType."test.txt");
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
         $this->createFile($fileName, $fileContents);
