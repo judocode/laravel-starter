@@ -26,6 +26,10 @@ That's it! You're all set to go. Run the `artisan` command from the Terminal to 
 
 Run `php artisan start` and the guided setup will help you with the rest!
 
+## Video overview of command
+
+Reading is boring... check out this overview: https://www.youtube.com/watch?v=6ESSjdUSNMw
+
 ### Accepted arguments at the add model prompt
 
 Within the command, there is a prompt to ask if you want to add tables, the syntax is simple!
