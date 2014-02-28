@@ -1,7 +1,7 @@
 @section('content')
 <div class="row">
     <h1>All [Models]</h1>
-    <a class="btn" href="{{ url('[model]/create') }}">New</a>
+    <a class="btn btn-success" href="{{ url('[model]/create') }}">New</a>
 </div>
 <div class="row">
     <table class="table">

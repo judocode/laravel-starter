@@ -2,8 +2,7 @@
 <div class="row">
     <h1>Viewing [model]</h1>
     <a class="btn btn-primary" href="{{ url('[model]/'.$[model]->id .'/edit') }}">Edit</a>
-    {{ Form::open(array('url' => '[model]/' . $[model]->id)) }}
-    {{ Form::hidden('_method', 'DELETE') }}
+    {{ Form::open(array('url' => '[model]/' . $[model]->id, 'method' => 'DELETE')) }}
     {{ Form::submit('Delete', array('class' => 'btn btn-danger')) }}
     {{ Form::close() }}
 </div>

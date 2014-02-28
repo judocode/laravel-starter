@@ -38,13 +38,13 @@ class [Model]Controller extends \BaseController
         $this->layout->content = \View::make('[model].edit')->with('[model]', $[model]);
 	}
 
-	public function postUpdate($id)
+	public function putUpdate($id)
 	{
         $this->[model]->update($id, \Input::only([repeat]'[property]',[/repeat]));
         return \Redirect::to('[model]/details/'.$id);
 	}
 
-	public function getDelete($id)
+	public function deleteDelete($id)
 	{
         $this->[model]->destroy($id);
         return \Redirect::to('[model]');
