@@ -170,11 +170,6 @@ class StartCommand extends Command
                 $this->propertiesStr = trim($this->propertiesStr, ',');
             }
 
-            if(!\File::isDirectory($this->pathToTemplates))
-            {
-                $this->rcopy("vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/", $this->pathToTemplates);
-            }
-
             $this->createModel();
 
             $this->isResource = $this->confirm('Do you want resource (y) or restful (n) controllers? ');
