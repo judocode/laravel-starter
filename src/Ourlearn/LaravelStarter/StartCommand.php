@@ -21,7 +21,7 @@ class StartCommand extends Command
     private $fieldNames;
     private $fileContents;
     private $controllerType;
-    private $pathToTemplates = "vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/";
+    private $pathToTemplates = "app/templates/";
     private $templatePathWithControllerType;
 
     public function __construct()
