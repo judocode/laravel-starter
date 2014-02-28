@@ -61,7 +61,8 @@ class StartCommand extends Command
             $this->relationship = array();
             $this->namespace = "";
 
-            $values = explode(" ", $modelAndFields);
+            $values = preg_split('/\s+/', $modelAndFields);
+
             $modelWithNamespace = $values[0];
 
             if(strpos($modelWithNamespace, "\\"))
@@ -77,7 +78,7 @@ class StartCommand extends Command
                 $modelAndFields = $this->ask($this->model->upper() ." is already in the global namespace. Please namespace your class or provide a different name: ");
                 $this->namespace = "";
 
-                $values = explode(" ", $modelAndFields);
+                $values = preg_split('/\s+/', $modelAndFields);
                 $modelWithNamespace = $values[0];
 
                 if(strpos($modelWithNamespace, "\\"))
