@@ -696,8 +696,7 @@ class StartCommand extends Command
      */
     private function putRepositoryFolderInStartFiles()
     {
-        $repositories = substr($this->pathTo['repositories'], 0, strlen($this->pathTo['repositories']-1));
-
+        $repositories = substr($this->pathTo['repositories'], 0, strlen($this->pathTo['repositories'])-1);
 
         $content = \File::get('app/start/global.php');
         if (preg_match("/repositories/", $content) !== 1)
