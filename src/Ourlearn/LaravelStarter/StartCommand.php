@@ -280,6 +280,11 @@ class StartCommand extends Command
                     $content .= "\t\tSchema::table('".$relation->model->plural()."', function(Blueprint \$table) {\n";
                     $content .= "\t\t\t\$table->foreign('". $this->model->lower()."_id')->references('id')->on('".$this->model->plural()."');\n";
                     $content .= "\t\t});\n";
+                } else if($this->isTableCreated($relation->model->plural())) {
+                    $content .= "\t\tSchema::table('".$relation->model->plural()."', function(Blueprint \$table) {\n";
+                    $content .= "\t\t\t\$table->integer('". $this->model->lower()."_id')->unsigned();\n";
+                    $content .= "\t\t\t\$table->foreign('". $this->model->lower()."_id')->references('id')->on('".$this->model->plural()."');\n";
+                    $content .= "\t\t});\n";
                 }
             }
         }
