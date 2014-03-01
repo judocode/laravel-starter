@@ -95,9 +95,9 @@ class StartCommand extends Command
 
             $this->createMigrations();
 
-            $this->runMigrations();
-
             $this->createSeeds();
+
+            $this->runMigrations();
 
             if($this->useRepository) {
                 $this->createRepository();
@@ -698,6 +698,7 @@ class StartCommand extends Command
     {
         $repositories = substr($this->pathTo['repositories'], 0, strlen($this->pathTo['repositories']-1));
 
+
         $content = \File::get('app/start/global.php');
         if (preg_match("/repositories/", $content) !== 1)
             $content = preg_replace("/app_path\(\).'\/controllers',/", "app_path().'/controllers',\n\t$repositories,", $content);
@@ -886,7 +887,7 @@ class StartCommand extends Command
     */
     private function generateLayoutFiles()
     {
-        $makeLayout = $this->confirm('Do you want to create a default layout file [y/n]? ', true);
+        $makeLayout = $this->confirm('Create default layout file [y/n]? (specify css/js files in config) ', true);
         if( $makeLayout )
         {
             $layoutDir = $this->pathTo['views'].'layouts';

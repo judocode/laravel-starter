@@ -48,16 +48,16 @@ return array(
 
     'paths' => array(
 
-        'templates' => app_path().'/templates',
-        'controllers' => app_path().'/controllers',
-        'migrations' => app_path().'/database/migrations',
-        'seeds' => app_path().'/database/seeds',
-        'models' => app_path().'/models',
-        'repositories' => app_path().'/repositories',
-        'repositoryInterfaces' => app_path().'/repositories/interfaces',
-        'tests' => app_path().'/tests',
-        'views' => app_path().'/views',
-        'routes' => app_path()
+        'templates' => 'app/templates',
+        'controllers' => 'app/controllers',
+        'migrations' => 'app/database/migrations',
+        'seeds' => 'app/database/seeds',
+        'models' => 'app/models',
+        'repositories' => 'app/repositories',
+        'repositoryInterfaces' => 'app/repositories/interfaces',
+        'tests' => 'app/tests',
+        'views' => 'app/views',
+        'routes' => 'app'
 
     ),
 
