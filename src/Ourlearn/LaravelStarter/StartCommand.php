@@ -21,8 +21,14 @@ class StartCommand extends Command
     private $fieldNames;
     private $fileContents;
     private $controllerType;
-    private $pathToTemplates = "app/templates/";
+    private $pathTo;
+    private $names;
+    private $useRepository;
+    private $views;
+    private $validTypes = array('bigInteger','binary', 'boolean', 'date', 'datetime', 'decimal', 'double', 'enum', 'float', 'integer', 'longtext', 'mediumtext', 'smallinteger', 'tinyinteger', 'string', 'text', 'time', 'timestamp', 'morphs', 'bigincrements');
+
     private $templatePathWithControllerType;
+    private $downloads;
 
     public function __construct()
     {
@@ -31,143 +37,49 @@ class StartCommand extends Command
 
     public function fire()
     {
-        $aliases = \Config::get('app.aliases');
-        foreach ($aliases as $alias => $facade) {
-            array_push($this->laravelClasses, strtolower($alias));
-        }
+        $this->getConfigSettings();
 
-        if(!\File::isDirectory($this->pathToTemplates))
-        {
-            $this->rcopy("vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/", $this->pathToTemplates);
-        }
+        $this->laravelClasses = $this->getLaravelClassNames();
+
+        $this->copyTemplateFiles();
 
         $this->generateLayoutFiles();
 
-        $modelAndFields = $this->ask('Add model with its relations and fields or type "q" to quit (type info for examples) ');
-
-        if($modelAndFields == "info") {
-            $this->info('MyNamespace\Book title:string year:integer');
-            $this->info('With relation: Book belongsTo Author title:string published:integer');
-            $this->info('Multiple relations: University hasMany Course, Department name:string city:string state:string homepage:string )');
-            $this->info('Or group like properties: University hasMany Department string( name city state homepage )');
-
-            $modelAndFields = $this->ask('Now your turn: ');
-        }
+        $modelAndFields = $this->askForModelAndFields();
 
         $moreTables = $modelAndFields == "q" ? false : true;
 
-        while( $moreTables )
-        {
-            $this->relationship = array();
-            $this->namespace = "";
+        while( $moreTables ) {
+            $modelNameCollision = false;
 
-            $values = preg_split('/\s+/', $modelAndFields);
+            $this->resetModels();
 
-            $modelWithNamespace = $values[0];
-
-            if(strpos($modelWithNamespace, "\\"))
-                $model = substr(strrchr($modelWithNamespace, "\\"), 1);
-            else
-                $model = $modelWithNamespace;
-
-            $this->namespace = substr($modelWithNamespace, 0, strrpos($modelWithNamespace, "\\"));
-
-            $this->model = new Model($model, $this->namespace);
-
-            while(in_array($this->model->lower(), $this->laravelClasses)) {
-                $modelAndFields = $this->ask($this->model->upper() ." is already in the global namespace. Please namespace your class or provide a different name: ");
-                $this->namespace = "";
+            do {
+                if($modelNameCollision) {
+                    $modelAndFields = $this->ask($this->model->upper() ." is already in the global namespace. Please namespace your class or provide a different name: ");
+                    $this->namespace = "";
+                }
 
                 $values = preg_split('/\s+/', $modelAndFields);
-                $modelWithNamespace = $values[0];
 
-                if(strpos($modelWithNamespace, "\\"))
-                    $model = substr(strrchr($modelWithNamespace, "\\"), 1);
-                else
-                    $model = $modelWithNamespace;
+                $modelWithNamespace = array_shift($values);
 
-                $this->namespace = substr($modelWithNamespace, 0, strrpos($modelWithNamespace, "\\"));
+                $this->namespace = $this->getNamespace($modelWithNamespace);
 
-                $this->model = new Model($model, $this->namespace);
-            }
+                $this->model = $this->getModel($modelWithNamespace);
 
-            $this->propertiesArr = array();
-            $this->propertiesStr = "";
+                $modelNameCollision = in_array($this->model->lower(), $this->laravelClasses);
 
-            unset($values[0]);
+            } while($modelNameCollision);
+
             $additionalFields = !empty($values);
 
-            if( $additionalFields )
-            {
-                if($this->nextArgumentIsRelation($values[1])) {
-                    $relationship = $values[1];
-                    $relatedTable = trim($values[2], ',');
-
-                    $i = 3;
-                    end($values);
-                    $lastIndex = key($values);
-                    $this->relationship = array();
-                    array_push($this->relationship, new Relation($relationship, new Model($relatedTable)));
-
-                    while($i <= $lastIndex && $this->nextArgumentIsRelation($values[$i])) {
-                        if(strpos($values[$i], ",") === false) {
-                            $next = $i + 1;
-                            if($this->isLastRelation($values, $next, $lastIndex)) {
-                                $relationship = $values[$i];
-                                $relatedTable = trim($values[$next], ',');
-                                $i++;
-                                unset($values[$next]);
-                            } else {
-                                $relatedTable = $values[$i];
-                            }
-                        } else {
-                            $relatedTable = trim($values[$i], ',');
-                        }
-                        array_push($this->relationship, new Relation($relationship, new Model($relatedTable)));
-                        unset($values[$i]);
-                        $i++;
-                    }
-
-                    unset($values[1]);
-                    unset($values[2]);
-                }
+            if( $additionalFields ) {
+                $this->getModelsWithRelationships($values);
 
                 $this->fieldNames = $values;
-                $bundled = false;
-                $fieldName = "";
-                $type = "";
 
-                foreach($this->fieldNames as $field)
-                {
-                    $skip = false;
-                    $pos = strrpos($field, ":");
-                    if ($pos !== false && !$bundled)
-                    {
-                        $type = substr($field, $pos+1);
-                        $fieldName = substr($field, 0, $pos);
-                    } else if(strpos($field, '(') !== false) {
-                        $type = substr($field, 0, strpos($field, '('));
-                        $bundled = true;
-                        $skip = true;
-                    } else if($bundled) {
-                        if($pos !== false && strpos($field, ")") === false) {
-                            $fieldName = substr($field, $pos+1);
-                            $num = substr($field, 0, $pos);
-                        } else if(strpos($field, ")") !== false){
-                            $skip = true;
-                            $bundled = false;
-                        } else {
-                            $fieldName = $field;
-                        }
-                    }
-
-                    if(!$skip && !empty($fieldName)) {
-                        $this->propertiesArr[$fieldName] = $type;
-                        $this->propertiesStr .= "'".$fieldName ."',";
-                    }
-                }
-
-                $this->propertiesStr = trim($this->propertiesStr, ',');
+                $this->fillProperties();
             }
 
             $this->createModel();
@@ -179,7 +91,7 @@ class StartCommand extends Command
             else
                 $this->controllerType = "restful";
 
-            $this->templatePathWithControllerType = $this->pathToTemplates . $this->controllerType ."/";
+            $this->templatePathWithControllerType = $this->pathTo['templates'] . $this->controllerType ."/";
 
             $this->createMigrations();
 
@@ -187,12 +99,10 @@ class StartCommand extends Command
 
             $this->createSeeds();
 
-            $this->createDirectory("app/repositories");
-            $this->createDirectory("app/repositories/interfaces");
-
-            $this->createRepositoryInterface();
-
-            $this->createRepository();
+            if($this->useRepository) {
+                $this->createRepository();
+                $this->createRepositoryInterface();
+            }
 
             $this->putRepositoryFolderInStartFiles();
 
@@ -202,25 +112,191 @@ class StartCommand extends Command
 
             $this->updateRoutesFile();
 
-            $this->createDirectory('app/tests/controller');
-
             $this->createTestsFile();
 
-            $modelAndFields = $this->ask('Add model with fields or "q" to quit (eg. MyNamespace\Book title:string year:integer) ');
+            $modelAndFields = $this->ask('Add model with fields or "q" to quit: ');
             $moreTables = $modelAndFields == "q" ? false : true;
         }
 
         $this->info('Please wait a few moments...');
 
         $this->call('clear-compiled');
+
         $this->call('optimize');
 
         $this->info('Done!');
     }
 
-    private function isLastRelation($values, $next, $lastIndex)
+    private function nameOf($type)
     {
-        return ($next <= $lastIndex && $this->nextArgumentIsRelation($values[$next]));
+        return $this->replaceModels($this->names[$type]);
+    }
+
+    private function getConfigSettings()
+    {
+        $package = "laravel-starter";
+
+        $config = $this->getLaravel()['config'];
+
+        $this->pathTo = $config->get("$package::paths");
+
+        foreach($this->pathTo as $pathName => $path) {
+            if($path[strlen($path)-1] != "/") {
+                $path .= "/";
+                $this->pathTo[$pathName] = $path;
+            }
+        }
+
+        $this->names = $config->get("$package::names");
+
+        $this->downloads = $config->get("$package::downloads");
+
+        $this->views = $config->get("$package::views");
+
+        $this->useRepository = $config->get("$package::repository");
+    }
+
+    private function askForModelAndFields()
+    {
+        $modelAndFields = $this->ask('Add model with its relations and fields or type "q" to quit (type info for examples) ');
+
+        if($modelAndFields == "info") {
+            $this->showInformation();
+
+            $modelAndFields = $this->ask('Now your turn: ');
+        }
+
+        return $modelAndFields;
+    }
+
+    private function copyTemplateFiles()
+    {
+        if(!\File::isDirectory($this->pathTo['templates'])) {
+            $this->rcopy("vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/", $this->pathTo['templates']);
+        }
+    }
+
+    private function showInformation()
+    {
+        $this->info('MyNamespace\Book title:string year:integer');
+        $this->info('With relation: Book belongsTo Author title:string published:integer');
+        $this->info('Multiple relations: University hasMany Course, Department name:string city:string state:string homepage:string )');
+        $this->info('Or group like properties: University hasMany Department string( name city state homepage )');
+    }
+
+    private function getLaravelClassNames()
+    {
+        $classNames = array();
+
+        $aliases = \Config::get('app.aliases');
+        foreach ($aliases as $alias => $facade) {
+            array_push($classNames, strtolower($alias));
+        }
+
+        return $classNames;
+    }
+
+    private function resetModels()
+    {
+        $this->relationship = array();
+        $this->namespace = "";
+        $this->propertiesArr = array();
+        $this->propertiesStr = "";
+        $this->model = null;
+    }
+
+    private function getModelsWithRelationships(&$values)
+    {
+        if($this->nextArgumentIsRelation($values[0])) {
+            $relationship = $values[0];
+            $relatedTable = trim($values[1], ',');
+
+            $i = 2;
+
+            $this->relationship = array();
+            array_push($this->relationship, new Relation($relationship, new Model($relatedTable)));
+
+            while($i < count($values) && $this->nextArgumentIsRelation($values[$i])) {
+                if(strpos($values[$i], ",") === false) {
+                    $next = $i + 1;
+                    if($this->isLastRelation($values, $next)) {
+                        $relationship = $values[$i];
+                        $relatedTable = trim($values[$next], ',');
+                        $i++;
+                        unset($values[$next]);
+                    } else {
+                        $relatedTable = $values[$i];
+                    }
+                } else {
+                    $relatedTable = trim($values[$i], ',');
+                }
+                array_push($this->relationship, new Relation($relationship, new Model($relatedTable)));
+                unset($values[$i]);
+                $i++;
+            }
+
+            unset($values[0]);
+            unset($values[1]);
+        }
+    }
+
+    private function fillProperties()
+    {
+        $bundled = false;
+        $fieldName = "";
+        $type = "";
+
+        foreach($this->fieldNames as $field)
+        {
+            $skip = false;
+            $pos = strrpos($field, ":");
+            if ($pos !== false && !$bundled)
+            {
+                $type = substr($field, $pos+1);
+                $fieldName = substr($field, 0, $pos);
+            } else if(strpos($field, '(') !== false) {
+                $type = substr($field, 0, strpos($field, '('));
+                $bundled = true;
+                $skip = true;
+            } else if($bundled) {
+                if($pos !== false && strpos($field, ")") === false) {
+                    $fieldName = substr($field, $pos+1);
+                    $num = substr($field, 0, $pos);
+                } else if(strpos($field, ")") !== false){
+                    $skip = true;
+                    $bundled = false;
+                } else {
+                    $fieldName = $field;
+                }
+            }
+
+            if(!$skip && !empty($fieldName)) {
+                $this->propertiesArr[$fieldName] = $type;
+                $this->propertiesStr .= "'".$fieldName ."',";
+            }
+        }
+
+        $this->propertiesStr = trim($this->propertiesStr, ',');
+    }
+
+    private function getNamespace($modelWithNamespace)
+    {
+        return substr($modelWithNamespace, 0, strrpos($modelWithNamespace, "\\"));
+    }
+
+    private function getModel($modelWithNamespace)
+    {
+        if(strpos($modelWithNamespace, "\\"))
+            $model = substr(strrchr($modelWithNamespace, "\\"), 1);
+        else
+            $model = $modelWithNamespace;
+
+        return new Model($model, $this->namespace);
+    }
+
+    private function isLastRelation($values, $next)
+    {
+        return ($next < count($values) && $this->nextArgumentIsRelation($values[$next]));
     }
 
     private function nextArgumentIsRelation($value)
@@ -241,7 +317,7 @@ class StartCommand extends Command
 
         $createTable = "create_" . $tableName . "_table";
 
-        $migrationFile = \App::make('Illuminate\Database\Migrations\MigrationCreator')->create($createTable, "app/database/migrations", $tableName, true);
+        $migrationFile = \App::make('Illuminate\Database\Migrations\MigrationCreator')->create($createTable, $this->pathTo['migrations'], $tableName, true);
 
         $functionContents = $this->migrationUp();
         $fileContents = $this->createFunction("up", $functionContents);
@@ -299,10 +375,10 @@ class StartCommand extends Command
 
         $found = false;
 
-        if ($handle = opendir('app/database/migrations')) {
+        if ($handle = opendir($this->pathTo['migrations'])) {
             while (false !== ($entry = readdir($handle))) {
                 if ($entry != "." && $entry != ".." && $entry != ".gitkeep") {
-                    $fileName = 'app/database/migrations/'.$entry;
+                    $fileName = $this->pathTo['migrations'].$entry;
 
                     $contents = \File::get($fileName);
                     $matched = preg_match("/Schema::(table|create).*'$tableName',.*\(.*\).*{.*'$columnName'.*}\);/s", $contents);
@@ -335,10 +411,10 @@ class StartCommand extends Command
             return true;
         }
 
-        if ($handle = opendir('app/database/migrations')) {
+        if ($handle = opendir($this->pathTo['migrations'])) {
             while (false !== ($entry = readdir($handle))) {
                 if ($entry != "." && $entry != "..") {
-                    $fileName = 'app/database/migrations/'.$entry;
+                    $fileName = $this->pathTo['migrations'].$entry;
 
                     $contents = \File::get($fileName);
                     if(strpos($contents, "Schema::create('$tableName'") !== false) {
@@ -441,7 +517,7 @@ class StartCommand extends Command
 
     private function createModel()
     {
-        $fileName = "app/models/" . $this->model->upper() . ".php";
+        $fileName = $this->pathTo['models'] . $this->nameOf("modelName") . ".php";
         $fileContents = "";
         foreach ($this->relationship as $relation) {
             $relatedModel = $relation->model;
@@ -449,7 +525,7 @@ class StartCommand extends Command
             $functionContent = "\t\treturn \$this->" . $relation->getType() . "('".$relatedModel->nameWithNamespace()."');\n";
             $fileContents .= $this->createFunction($relation->getName(), $functionContent);
 
-            $relatedModelFile = 'app/models/'.$relatedModel->upper().'.php';
+            $relatedModelFile = $this->pathTo['models'].$relatedModel->upper().'.php';
             $continue = true;
 
             if(!\File::exists($relatedModelFile)) {
@@ -490,7 +566,7 @@ class StartCommand extends Command
     {
         $faker = Factory::create();
 
-        $databaseSeeder = 'app/database/seeds/DatabaseSeeder.php';
+        $databaseSeeder = $this->pathTo['seeds'] . 'DatabaseSeeder.php';
         $databaseSeederContents = \File::get($databaseSeeder);
         if(preg_match("/faker/", $databaseSeederContents) !== 1) {
             $contentBefore = substr($databaseSeederContents, 0, strpos($databaseSeederContents, "{"));
@@ -567,7 +643,8 @@ class StartCommand extends Command
 
         $fileContents = $this->createFunction("run", $functionContent);
 
-        $fileName = "app/database/seeds/" . $this->model->upperPlural() . "TableSeeder.php";
+        $fileName = $this->pathTo['seeds'] . $this->model->upperPlural() . "TableSeeder.php";
+
         $this->createClass($fileName, $fileContents, array('name' => 'DatabaseSeeder'), array(), array(), "class", false);
 
         $tableSeederClassName = $this->model->upperPlural() . 'TableSeeder';
@@ -585,9 +662,12 @@ class StartCommand extends Command
      */
     private function createRepositoryInterface()
     {
-        $fileName = "app/repositories/interfaces/" . $this->model->upper() . "RepositoryInterface.php";
+        $this->createDirectory($this->pathTo['repositoryInterfaces']);
 
-        $fileContents = \File::get($this->pathToTemplates."repository-interface.txt");
+        $fileName = $this->pathTo['repositoryInterfaces'] . $this->nameOf("repositoryInterface") . ".php";
+
+        $fileContents = \File::get($this->pathTo['templates']."repository-interface.txt");
+        $fileContents = $this->replaceNames($fileContents);
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
         $this->createFile($fileName, $fileContents);
@@ -598,9 +678,12 @@ class StartCommand extends Command
      */
     private function createRepository()
     {
-        $fileName = 'app/repositories/Eloquent' . $this->model->upper() . 'Repository.php';
+        $this->createDirectory($this->pathTo['repositories']);
 
-        $fileContents = \File::get($this->pathToTemplates."eloquent-repository.txt");
+        $fileName = $this->pathTo['repositories'] . $this->nameOf("repository") . '.php';
+
+        $fileContents = \File::get($this->pathTo['templates']."eloquent-repository.txt");
+        $fileContents = $this->replaceNames($fileContents);
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
         $this->createFile($fileName, $fileContents);
@@ -613,15 +696,17 @@ class StartCommand extends Command
      */
     private function putRepositoryFolderInStartFiles()
     {
+        $repositories = substr($this->pathTo['repositories'], 0, strlen($this->pathTo['repositories']-1));
+
         $content = \File::get('app/start/global.php');
         if (preg_match("/repositories/", $content) !== 1)
-            $content = preg_replace("/app_path\(\).'\/controllers',/", "app_path().'/controllers',\n\tapp_path().'/repositories',", $content);
+            $content = preg_replace("/app_path\(\).'\/controllers',/", "app_path().'/controllers',\n\t$repositories,", $content);
 
         \File::put('app/start/global.php', $content);
 
         $content = \File::get('composer.json');
         if (preg_match("/repositories/", $content) !== 1)
-            $content = preg_replace("/\"app\/controllers\",/", "\"app/controllers\",\n\t\t\t\"app/repositories\",", $content);
+            $content = preg_replace("/\"app\/controllers\",/", "\"app/controllers\",\n\t\t\t\"$repositories\",", $content);
 
         \File::put('composer.json', $content);
     }
@@ -631,11 +716,17 @@ class StartCommand extends Command
      */
     private function createController()
     {
-        $fileName = "app/controllers/" . $this->model->upper() . "Controller.php";
+        $fileName = $this->pathTo['controllers'] . $this->nameOf("controller"). ".php";
 
         $fileContents = \File::get($this->templatePathWithControllerType."controller.txt");
+        $fileContents = $this->replaceNames($fileContents);
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
+
+        if(!$this->useRepository) {
+            $fileContents = str_replace($this->nameOf("repositoryInterface"), $this->nameOf("model"), $fileContents);
+        }
+
         $this->createFile($fileName, $fileContents);
 
         $this->info($this->model->upper() . 'Controller created!');
@@ -646,13 +737,12 @@ class StartCommand extends Command
      */
     private function createTestsFile()
     {
-        $dir = "app/views/" . $this->model->lower() . "/";
-        if (!\File::isDirectory($dir))
-            \File::makeDirectory($dir);
+        $this->createDirectory($this->pathTo['tests']. 'controller');
 
-        $fileName = "app/tests/controller/" . $this->model->upperPlural() . "ControllerTest.php";
+        $fileName = $this->pathTo['tests']."controller/" . $this->nameOf("test") .".php";
 
         $fileContents = \File::get($this->templatePathWithControllerType."test.txt");
+        $fileContents = $this->replaceNames($fileContents);
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
         $this->createFile($fileName, $fileContents);
@@ -665,15 +755,18 @@ class StartCommand extends Command
      */
     private function updateRoutesFile()
     {
-        $routeFile = "app/routes.php";
+        $routeFile = $this->pathTo['routes']."routes.php";
 
         $namespace = $this->namespace ? $this->namespace . "\\" : "";
 
-        $fileContents = "\nApp::bind('" . $this->model->nameWithNamespace() . "RepositoryInterface','" . $namespace . "Eloquent" . $this->model->upper() . "Repository');\n";
+        $fileContents = "";
+
+        if($this->useRepository)
+            $fileContents = "\nApp::bind('" . $namespace . $this->nameOf("repositoryInterface")."','" . $namespace . $this->nameOf("repository") ."');\n";
 
         $routeType = $this->isResource ? "resource" : "controller";
 
-        $fileContents .= "Route::" . $routeType . "('" . $this->model->lower() . "', '" . $this->model->nameWithNamespace() . "Controller');\n";
+        $fileContents .= "Route::" . $routeType . "('" . $this->nameOf("viewFolder") . "', '" . $namespace. $this->nameOf("controller") ."');\n";
 
         $content = \File::get($routeFile);
         if (preg_match("/" . $this->model->lower() . "/", $content) !== 1) {
@@ -685,22 +778,25 @@ class StartCommand extends Command
 
     private function createViews()
     {
-        $views = array('view', 'edit', 'create', 'all');
-
-        $dir = "app/views/" . $this->model->lower() . "/";
+        $dir = $this->pathTo['views'] . $this->nameOf('viewFolder') . "/";
         if (!\File::isDirectory($dir))
             \File::makeDirectory($dir);
 
-        $pathToViews = $this->pathToTemplates.$this->controllerType."/";
+        $pathToViews = $this->pathTo['templates'].$this->controllerType."/";
 
-        foreach($views as $view) {
+        foreach($this->views as $view) {
             $fileName = $dir . "$view.blade.php";
 
-            $fileContents = \File::get($pathToViews."$view.txt");
+            try{
+                $fileContents = \File::get($pathToViews."$view.txt");
+                $fileContents = $this->replaceNames($fileContents);
+                $fileContents = $this->replaceModels($fileContents);
+                $fileContents = $this->replaceProperties($fileContents);
+                $this->createFile($fileName, $fileContents);
+            } catch(\Illuminate\Filesystem\FileNotFoundException $e) {
+                $this->error("Template file ".$pathToViews . $view.".txt does not exist! You need to create it to generate that file!");
+            }
 
-            $fileContents = $this->replaceModels($fileContents);
-            $fileContents = $this->replaceProperties($fileContents);
-            $this->createFile($fileName, $fileContents);
         }
 
         $this->info('Views created!');
@@ -711,6 +807,15 @@ class StartCommand extends Command
         $modelReplaces = array('[model]'=>$this->model->lower(), '[Model]'=>$this->model->upper(), '[models]'=>$this->model->plural(), '[Models]'=>$this->model->upperPlural());
         foreach($modelReplaces as $model => $name) {
             $fileContents = str_replace($model, $name, $fileContents);
+        }
+
+        return $fileContents;
+    }
+
+    public function replaceNames($fileContents)
+    {
+        foreach($this->names as $name => $text) {
+            $fileContents = str_replace("[$name]", $text, $fileContents);
         }
 
         return $fileContents;
@@ -746,17 +851,18 @@ class StartCommand extends Command
     {
         $type = substr(strrchr($downloadLocation, "."), 1);
 
-        $confirmedAsset = $this->confirm('Do you want '.$assetName.' [y/n]? ', true);
-        if( $confirmedAsset )
+        if($assetName == "jquery")
         {
-            if($assetName == "jquery")
-            {
-                $version = $this->confirm("Do you want v1.11 (y) or 2.1 (n)? ");
-                if(!$version)
-                {
+            $assetName .= "1";
+            if($this->downloads[$assetName] !== true) {
+                $assetName = substr($assetName, 0, strlen($assetName)-1) ."2";
+                if($this->downloads[$assetName] === true)
                     $downloadLocation = "http://code.jquery.com/jquery-2.1.0.min.js";
-                }
             }
+        }
+
+        if( $this->downloads[$assetName] === true )
+        {
             $localLocation = "public/" . $type . "/" . $assetName . "." . $type;
             $ch = curl_init($downloadLocation);
             $fp = fopen($localLocation, "w");
@@ -783,17 +889,17 @@ class StartCommand extends Command
         $makeLayout = $this->confirm('Do you want to create a default layout file [y/n]? ', true);
         if( $makeLayout )
         {
-            $layoutDir = 'app/views/layouts';
+            $layoutDir = $this->pathTo['views'].'layouts';
             if(!\File::isDirectory($layoutDir))
                 \File::makeDirectory($layoutDir);
 
             $layoutPath = $layoutDir.'/default.blade.php';
 
-            $content = \File::get('app/controllers/BaseController.php');
-            if(preg_match("/\$layout/", $content) !== 1)
+            $content = \File::get($this->pathTo['controllers'].'BaseController.php');
+            if(strpos($content, "\$layout") === false)
             {
                 $content = preg_replace("/Controller {/", "Controller {\n\tprotected \$layout = 'layouts.default';", $content);
-                \File::put('app/controllers/BaseController.php', $content);
+                \File::put($this->pathTo['controllers'].'BaseController.php', $content);
             }
 
             if(!\File::isDirectory('public/js'))
@@ -810,7 +916,7 @@ class StartCommand extends Command
 
             if(!\File::exists($layoutPath) || $overwrite)
             {
-                $this->fileContents = \File::get($this->pathToTemplates.'layout.txt');
+                $this->fileContents = \File::get($this->pathTo['templates'].'layout.txt');
 
                 $this->downloadAsset("jquery", "http://code.jquery.com/jquery-1.11.0.min.js");
 
@@ -836,8 +942,7 @@ class StartCommand extends Command
     */
     private function downloadCSSFramework()
     {
-        $bootstrap = $this->confirm('Do you want twitter bootstrap [y/n]? ', true);
-        if( $bootstrap )
+        if( $this->downloads['bootstrap'] )
         {
             $ch = curl_init("https://github.com/twbs/bootstrap/releases/download/v3.1.0/bootstrap-3.1.0-dist.zip");
             $fp = fopen("public/bootstrap.zip", "w");
@@ -904,56 +1009,52 @@ class StartCommand extends Command
             $this->fileContents = str_replace("<!--[javascript]-->", "<script src=\"{{ url('bootstrap/js/bootstrap.min.js') }}\"></script>\n<!--[javascript]-->", $this->fileContents);
             $this->info("Bootstrap files loaded to public/bootstrap!");
         }
-        else
+        else if($this->downloads['foundation'])
         {
-            $foundation = $this->confirm('Do you want foundation [y/n]? ', true);
-            if( $foundation )
+            $ch = curl_init("http://foundation.zurb.com/cdn/releases/foundation-5.1.1.zip");
+            $fp = fopen("public/foundation.zip", "w");
+
+            curl_setopt($ch, CURLOPT_FILE, $fp);
+            curl_setopt($ch, CURLOPT_HEADER, 0);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+            curl_exec($ch);
+            curl_close($ch);
+            fclose($fp);
+            $zip = zip_open("public/foundation.zip");
+            if ($zip)
             {
-                $ch = curl_init("http://foundation.zurb.com/cdn/releases/foundation-5.1.1.zip");
-                $fp = fopen("public/foundation.zip", "w");
-
-                curl_setopt($ch, CURLOPT_FILE, $fp);
-                curl_setopt($ch, CURLOPT_HEADER, 0);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-                curl_exec($ch);
-                curl_close($ch);
-                fclose($fp);
-                $zip = zip_open("public/foundation.zip");
-                if ($zip)
+                while ($zip_entry = zip_read($zip))
                 {
-                    while ($zip_entry = zip_read($zip))
+                    $foundationFile = "public/".zip_entry_name($zip_entry);
+                    $foundationDir = dirname($foundationFile);
+                    if(!\File::isDirectory($foundationDir))
+                        \File::makeDirectory($foundationDir);
+
+                    $fp = fopen("public/".zip_entry_name($zip_entry), "w");
+                    if (zip_entry_open($zip, $zip_entry, "r"))
                     {
-                        $foundationFile = "public/".zip_entry_name($zip_entry);
-                        $foundationDir = dirname($foundationFile);
-                        if(!\File::isDirectory($foundationDir))
-                            \File::makeDirectory($foundationDir);
-
-                        $fp = fopen("public/".zip_entry_name($zip_entry), "w");
-                        if (zip_entry_open($zip, $zip_entry, "r"))
-                        {
-                            $buf = zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
-                            fwrite($fp,"$buf");
-                            zip_entry_close($zip_entry);
-                            fclose($fp);
-                        }
+                        $buf = zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
+                        fwrite($fp,"$buf");
+                        zip_entry_close($zip_entry);
+                        fclose($fp);
                     }
-                    zip_close($zip);
-                    \File::delete('public/index.html');
-                    \File::delete('public/robots.txt');
-                    \File::delete('humans.txt');
-                    \File::delete('foundation.zip');
-                    \File::deleteDirectory('public/js/foundation');
-                    \File::deleteDirectory('public/js/vendor');
-                    \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
                 }
-                $fileReplace = "\t<link href=\"{{ url ('css/foundation.min.css') }}\" rel=\"stylesheet\">\n<!--[css]-->";
-                $this->fileContents = str_replace("<!--[css]-->",  $fileReplace, $this->fileContents);
-                $this->fileContents = str_replace("<!--[javascript]-->", "<script src=\"{{ url ('/js/foundation.js') }}\"></script>\n<!--[javascript]-->", $this->fileContents);
-
-                $this->info('Foundation successfully set up (v4.0.5)!');
+                zip_close($zip);
+                \File::delete('public/index.html');
+                \File::delete('public/robots.txt');
+                \File::delete('humans.txt');
+                \File::delete('foundation.zip');
+                \File::deleteDirectory('public/js/foundation');
+                \File::deleteDirectory('public/js/vendor');
+                \File::move('public/js/foundation.min.js', 'public/js/foundation.js');
             }
+            $fileReplace = "\t<link href=\"{{ url ('css/foundation.min.css') }}\" rel=\"stylesheet\">\n<!--[css]-->";
+            $this->fileContents = str_replace("<!--[css]-->",  $fileReplace, $this->fileContents);
+            $this->fileContents = str_replace("<!--[javascript]-->", "<script src=\"{{ url ('/js/foundation.js') }}\"></script>\n<!--[javascript]-->", $this->fileContents);
+
+            $this->info('Foundation successfully set up (v4.0.5)!');
         }
     }
 

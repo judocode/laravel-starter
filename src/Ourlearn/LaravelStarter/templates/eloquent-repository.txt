@@ -1,6 +1,6 @@
 <?php 
 
-class Eloquent[Model]Repository implements [Model]RepositoryInterface 
+class [repository] implements [repositoryInterface]
 {
 	private $[model];
 

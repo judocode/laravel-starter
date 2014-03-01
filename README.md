@@ -22,11 +22,19 @@ That's it! You're all set to go. Run the `artisan` command from the Terminal to 
 
     php artisan
 
+## New features
+
+This now comes with a configuration file. Configure all file directories, class names, view files, whether or not you want repository pattern, which css/js files to download, and you can completely customize view and layout files from within the templates folder! Be sure to run:
+
+`php artisan config:publish ourlearn/laravel-starter`
+
+To include the config file within your config folder!
+
 ## Usage
 
 Run `php artisan start` and the guided setup will help you with the rest!
 
-## Video overview of command
+### Video overview of command
 
 Reading is boring... check out this overview: https://www.youtube.com/watch?v=6ESSjdUSNMw
 

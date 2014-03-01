@@ -1,10 +1,10 @@
 <?php 
 
-class [Model]Controller extends \BaseController 
+class [controller] extends \BaseController
 {
 	protected $[model];
 
-	public function __construct([Model]RepositoryInterface $[model])
+	public function __construct([repositoryInterface] $[model])
 	{
 		$this->[model] = $[model];
 	}

@@ -1,6 +1,6 @@
 <?php 
 
-interface [Model]RepositoryInterface 
+interface [repositoryInterface]
 {
 	public function all();
 	public function find($id);

@@ -1,6 +1,6 @@
 <?php 
 
-class [Models]ControllerTest extends \TestCase 
+class [test] extends \TestCase
 {
 	public function testIndex()
 	{
