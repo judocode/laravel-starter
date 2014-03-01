@@ -4,7 +4,7 @@ class [repository] implements [repositoryInterface]
 {
 	private $[model];
 
-	public function __construct([Model] $[model])
+	public function __construct([modelName] $[model])
 	{
 		$this->[model] = $[model];
 	}

@@ -517,7 +517,7 @@ class StartCommand extends Command
     private function createModel()
     {
         $fileName = $this->pathTo['models'] . $this->nameOf("modelName") . ".php";
-        $fileContents = "";
+        $fileContents = "\tprotected \$table = '". $this->model->plural() ."';";
         foreach ($this->relationship as $relation) {
             $relatedModel = $relation->model;
 
