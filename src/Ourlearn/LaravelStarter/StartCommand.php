@@ -542,7 +542,7 @@ class StartCommand extends Command
                     $reverseRelations = $relation->reverseRelations();
 
                     if(count($reverseRelations) > 1) {
-                        $index = $this->ask("How does " . $relatedModel->upper() . " relate back to ". $this->model->upper() ."? (0=".$reverseRelations[0]. " 1=".$reverseRelations[1] .") ");
+                        $index = $this->ask($relatedModel->upper() . " (0=".$reverseRelations[0]. " OR 1=".$reverseRelations[1] .") ". $this->model->upper() ."? ");
                     }
 
                     $reverseRelationType = $reverseRelations[$index];
