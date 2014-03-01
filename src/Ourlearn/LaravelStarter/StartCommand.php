@@ -102,9 +102,8 @@ class StartCommand extends Command
             if($this->useRepository) {
                 $this->createRepository();
                 $this->createRepositoryInterface();
+                $this->putRepositoryFolderInStartFiles();
             }
-
-            $this->putRepositoryFolderInStartFiles();
 
             $this->createController();
 
@@ -698,9 +697,14 @@ class StartCommand extends Command
     {
         $repositories = substr($this->pathTo['repositories'], 0, strlen($this->pathTo['repositories'])-1);
 
+        $startRepo = $repositories;
+
+        if(strpos($repositories, "app") !== false)
+            $startRepo = "app_path().'".substr($repositories, strpos($repositories, "/"), strlen($repositories) - strpos($repositories, "/"))."'";
+
         $content = \File::get('app/start/global.php');
         if (preg_match("/repositories/", $content) !== 1)
-            $content = preg_replace("/app_path\(\).'\/controllers',/", "app_path().'/controllers',\n\t$repositories,", $content);
+            $content = preg_replace("/app_path\(\).'\/controllers',/", "app_path().'/controllers',\n\t$startRepo,", $content);
 
         \File::put('app/start/global.php', $content);
 
