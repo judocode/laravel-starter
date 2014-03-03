@@ -1,6 +1,6 @@
 @section('content')
 <div class="row">
-    <h2>Edit author</h2>
+    <h2>Edit [model]</h2>
 </div>
 <div class="row">
     {{ Form::model($[model], array('route' => array('[model].update', $[model]->id), 'method' => 'PUT')) }}
