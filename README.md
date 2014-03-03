@@ -24,6 +24,29 @@ That's it! You're all set to go. Run the `artisan` command from the Terminal to 
 
 ## New features
 
+###Load models and properties from a file!!
+
+You can now load as many models as you want from one file! Format:
+
+`resource = true`
+`namespace = Ourlearn`
+`University hasMany Department string( name city state homepage ) -nt`
+`Department belongsTo University, hasMany Course string( name description ) number:integer`
+`resource = false`
+`Course belongsTo Department, hasMany Lesson string( name description ) integer( number credits )`
+
+Where resource is whether or not your controller is a resource controller. All controllers will follow what the previous `resource` was set, so you can mix and match.
+
+If namespace is set, then it is applied globally, else you can namespace specific models by prefacing the name with the namespace.
+
+`-nt` is an option that sets timestamps to false on the particular model.
+
+Command is as follows:
+
+`php artisan start:file "path/to/file.txt"`
+
+###Configurations
+
 This now comes with a configuration file. Configure all file directories, class names, view files, whether or not you want repository pattern, which css/js files to download, and you can completely customize view and layout files from within the templates folder! Be sure to run:
 
 `php artisan config:publish ourlearn/laravel-starter`

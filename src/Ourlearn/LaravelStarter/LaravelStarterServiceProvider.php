@@ -33,7 +33,17 @@ class LaravelStarterServiceProvider extends ServiceProvider {
 			return new StartCommand($app);
 		});
 
-		$this->commands('start');
+        $this->app['start.file'] = $this->app->share(function($app)
+        {
+            return new StartFromFileCommand($app);
+        });
+
+        $this->app['start.model'] = $this->app->share(function($app)
+        {
+            return new StartModelCommand($app);
+        });
+
+		$this->commands('start', 'start.file', 'start.model');
 	}
 
 	/**

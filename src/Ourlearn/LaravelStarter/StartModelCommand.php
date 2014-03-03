@@ -3,11 +3,11 @@
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Input\InputArgument;
 
-class StartCommand extends Command
+class StartModelCommand extends Command
 {
-    protected $name = 'start';
+    protected $name = 'start:model';
 
-    protected $description = "Makes layout, js/css, table, controller, model, views, seeds, and repository";
+    protected $description = "Makes table, controller, model, views, seeds, and repository";
 
     public function __construct()
     {
@@ -17,8 +17,6 @@ class StartCommand extends Command
     public function fire()
     {
         $start = new Start($this);
-
-        $start->createLayout();
 
         $start->createModels();
 

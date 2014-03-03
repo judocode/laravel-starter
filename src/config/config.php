@@ -15,6 +15,17 @@ return array(
 
     /*
 	|--------------------------------------------------------------------------
+	| Application Name
+	|--------------------------------------------------------------------------
+	|
+	| Define the name of your application
+	|
+	*/
+
+    'appName' => 'Your project',
+
+    /*
+	|--------------------------------------------------------------------------
 	| Downloads
 	|--------------------------------------------------------------------------
 	|
@@ -57,7 +68,8 @@ return array(
         'repositoryInterfaces' => 'app/repositories/interfaces',
         'tests' => 'app/tests',
         'views' => 'app/views',
-        'routes' => 'app'
+        'routes' => 'app',
+        'layout' => 'app/views/layouts/default.blade.php'
 
     ),
 
