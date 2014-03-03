@@ -95,7 +95,7 @@ This now utilizes template files, so you can specify the format for your views, 
 
 ## Bonus
 
-Want to go even FURTHER the scaffold process?!?! Setup [foreman](https://github.com/Indatus/foreman), add ourlearn/laravel-starter to the require-dev section, setup an app file to copy from that adds the laravel starter service provider, setup a database file that sets up your database to copy from, and finally setup a models.txt file to copy from (example above). Save that scaffold file somewhere convenient.
+Want to go even FURTHER with the scaffold process?!?! Setup [foreman](https://github.com/Indatus/foreman), add ourlearn/laravel-starter to the require-dev section, setup an app file to copy from that adds the laravel starter service provider, setup a database file that sets up your database to copy from, and finally setup a models.txt file to copy from (example above). Save that scaffold file somewhere convenient.
 
 Then, you can edit your bash file to include a new alias:
 
