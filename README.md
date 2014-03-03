@@ -28,8 +28,8 @@ That's it! You're all set to go. Run the `artisan` command from the Terminal to 
 
 You can now load as many models as you want from one file! Format:
 
-`resource = true`
-`namespace = Ourlearn`
+    resource = true
+    namespace = Ourlearn
 `University hasMany Department string( name city state homepage ) -nt`
 `Department belongsTo University, hasMany Course string( name description ) number:integer`
 `resource = false`
