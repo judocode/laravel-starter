@@ -28,7 +28,6 @@ That's it! You're all set to go. Run the `artisan` command from the Terminal to 
 
 You can now load as many models as you want from one file! Just run the command `php artisan start:file "path/to/file.txt"` where `file.txt` is of the format:
 
-    // path/to/file.txt
     resource = true
     namespace = Ourlearn
     University hasMany Department string( name city state homepage ) -nt
