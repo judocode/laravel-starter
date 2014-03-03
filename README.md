@@ -93,6 +93,26 @@ The seeder now uses faker in order to randomly generate 10 rows in each table. I
 
 This now utilizes template files, so you can specify the format for your views, controller, repository, and tests in a folder called "templates" in your app directory.
 
+## Bonus
+
+Want to go even FURTHER the scaffold process?!?! Setup [foreman](https://github.com/Indatus/foreman), add ourlearn/laravel-starter to the require-dev section, setup an app file to copy from that adds the laravel starter service provider, setup a database file that sets up your database to copy from, and finally setup a models.txt file to copy from (example above). Save that scaffold file somewhere convenient.
+
+Then, you can edit your bash file to include a new alias:
+
+    alias laravel="foremancreate"
+    foremancreate(){
+        foreman build /path/to/htdocs/folder/$1 /path/to/scaffold.json
+        cd /path/to/htdocs/folder/$1
+        composer update
+        php artisan start:file "app/models.txt"
+        php artisan migrate
+        php artisan db:seed
+    }
+
+Then run `laravel project-name` and watch as your application is fully built and scaffolded for you :)
+
+Video of this process coming soon.
+
 ## Future ideas
 
 - Automatically create js file based on js framework that is specified.
