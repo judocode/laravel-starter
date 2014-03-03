@@ -362,6 +362,8 @@ class Start
                 }
             }
 
+            $fieldName = trim($fieldName, ",");
+
             if(!$skip && !empty($fieldName)) {
                 $properties[$fieldName] = $type;
             }
