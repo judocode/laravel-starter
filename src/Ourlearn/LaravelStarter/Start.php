@@ -103,6 +103,8 @@ class Start
 
         $this->setupLayoutFiles();
 
+        $this->createLayout();
+
         $inputFile = file($fileName);
 
         foreach( $inputFile as $line_num => $modelAndProperties ) {
