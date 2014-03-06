@@ -28,18 +28,14 @@ class [repository] implements [repositoryInterface]
         $[model]->save();
 	}
 
-	public function update($id, $input)
+	public function update($input)
 	{
-		$[model] = $this->find($id);
-		[repeat]
-        $[model]->[property] = $input['[property]'];
-        [/repeat]
-        $[model]->save();
+	    $this->[model]->update($input);
 	}
 
 	public function destroy($id)
 	{
-		$this->find($id)->delete();
+		$this->[model]->find($id)->delete();
 	}
 
 }

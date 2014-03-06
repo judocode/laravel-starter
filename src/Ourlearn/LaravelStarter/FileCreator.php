@@ -122,6 +122,11 @@ class FileCreator
         return $fileContents;
     }
 
+    public function copyFile($source, $destination)
+    {
+        copy($source, $destination);
+    }
+
     public function copyDirectory($source, $destination)
     {
         if (file_exists ( $destination ))
@@ -147,4 +152,4 @@ class FileCreator
         else if (file_exists($dir)) unlink($dir);
     }
 
-} 
+}

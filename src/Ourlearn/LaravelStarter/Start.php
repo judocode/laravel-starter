@@ -200,6 +200,7 @@ class Start
 
         $this->createController();
 
+
         $this->createViews();
 
         $this->updateRoutes();
@@ -612,10 +613,19 @@ class Start
     private function createModel()
     {
         $fileName = $this->configSettings['pathTo']['models'] . $this->nameOf("modelName") . ".php";
-        $fileContents = "\tprotected \$table = '". $this->model->plural() ."';\n";
+        $fileContents = "protected \$table = '". $this->model->plural() ."';\n";
 
         if(!$this->timestamps)
             $fileContents .= "\tpublic \$timestamps = false;\n";
+
+        $properties = "";
+        foreach ($this->propertiesArr as $property => $type) {
+            $properties .= "'$property',";
+        }
+
+        $properties = rtrim($properties, ",");
+
+        $fileContents .= "\tprotected \$fillable = array(".$properties.");\n";
 
         foreach ($this->relationship as $relation) {
             $relatedModel = $relation->model;
@@ -659,7 +669,9 @@ class Start
             }
         }
 
-        $this->fileCreator->createClass($fileName, $fileContents, array("name" => "\\Eloquent"));
+        $template = $this->configSettings['useRepository'] ? "model.txt" : "model-no-repo.txt";
+
+        $this->makeFileFromTemplate($fileName, $this->configSettings['pathTo']['templates'].$template, $fileContents);
 
         $this->updateLayoutFile();
     }
@@ -881,17 +893,27 @@ class Start
         }
     }
 
-    public function makeFileFromTemplate($fileName, $template)
+    public function makeFileFromTemplate($fileName, $template, $content = "")
     {
-        $fileContents = \File::get($template);
+        try {
+            $fileContents = \File::get($template);
+        } catch(\Illuminate\Filesystem\FileNotFoundException $e) {
+            $shortTemplate = substr($template, strpos($template, $this->configSettings["pathTo"]["templates"]) + strlen($this->configSettings["pathTo"]["templates"]),strlen($template)-strlen($this->configSettings["pathTo"]["templates"]));
+            $this->fileCreator->copyFile("vendor/ourlearn/laravel-starter/src/Ourlearn/LaravelStarter/templates/".$shortTemplate, $template);
+            $fileContents = \File::get($template);
+        }
         $fileContents = $this->replaceNames($fileContents);
         $fileContents = $this->replaceModels($fileContents);
         $fileContents = $this->replaceProperties($fileContents);
+        if($content) {
+            $fileContents = str_replace("[content]", $content, $fileContents);
+        }
+
         $namespace = $this->namespace ? "namespace ".$this->namespace. ";" : "";
         $fileContents = str_replace("[namespace]", $namespace, $fileContents);
 
         if(!$this->configSettings['useRepository']) {
-            $fileContents = str_replace($this->nameOf("repositoryInterface"), $this->nameOf("model"), $fileContents);
+            $fileContents = str_replace($this->nameOf("repositoryInterface"), $this->nameOf("modelName"), $fileContents);
         }
 
         $this->fileCreator->createFile($fileName, $fileContents);
@@ -941,7 +963,4 @@ class Start
 
         return $fileContents;
     }
-
-
-
 }

@@ -40,7 +40,7 @@ class [controller] extends \BaseController
 
 	public function putUpdate($id)
 	{
-        $this->[model]->update($id, \Input::only([repeat]'[property]',[/repeat]));
+        $this->[model]->find($id)->update(\Input::only([repeat]'[property]',[/repeat]));
         return \Redirect::to('[model]/details/'.$id);
 	}
 
