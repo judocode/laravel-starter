@@ -18,6 +18,8 @@ class StartCommand extends Command
     {
         $start = new Start($this);
 
+        $start->setupLayoutFiles();
+
         $start->createLayout();
 
         $start->createModels();

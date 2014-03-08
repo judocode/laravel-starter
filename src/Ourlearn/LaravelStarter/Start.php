@@ -21,7 +21,27 @@ class Start
     protected $configSettings;
     protected $command;
 
-    private $validTypes = array('bigInteger','binary', 'boolean', 'date', 'datetime', 'decimal', 'double', 'enum', 'float', 'integer', 'longtext', 'mediumtext', 'smallinteger', 'tinyinteger', 'string', 'text', 'time', 'timestamp', 'morphs', 'bigincrements');
+    private $validTypes = array(
+        'biginteger'=>'bigInteger',
+        'binary'=>'binary',
+        'boolean'=>'boolean',
+        'date'=>'date',
+        'datetime'=>'dateTime',
+        'decimal'=>'decimal',
+        'double'=>'double',
+        'enum'=>'enum',
+        'float'=>'float',
+        'integer'=>'integer',
+        'longtext'=>'longText',
+        'mediumtext'=>'mediumText',
+        'smallinteger'=>'smallInteger',
+        'tinyinteger'=>'tinyInteger',
+        'string'=>'string',
+        'text'=>'text',
+        'time'=>'time',
+        'timestamp'=>'timestamp',
+        'morphs'=>'morphs',
+        'bigincrements'=>'bigIncrements');
 
     private $templatePathWithControllerType;
     private $namespaceGlobal;
@@ -73,7 +93,7 @@ class Start
 
         $modelAndProperties = $this->askForModelAndFields();
 
-        $moreTables = $modelAndProperties == "q" ? false : true;
+        $moreTables = trim($modelAndProperties) == "q" ? false : true;
 
         while( $moreTables ) {
 
@@ -86,7 +106,8 @@ class Start
             $this->command->info("Model ".$this->model->upper(). " and all associated files created successfully!");
 
             $modelAndFields = $this->command->ask('Add model with fields or "q" to quit: ');
-            $moreTables = $modelAndFields == "q" ? false : true;
+
+            $moreTables = trim($modelAndFields) == "q" ? false : true;
         }
     }
 
@@ -129,7 +150,7 @@ class Start
         }
     }
 
-    private function setupLayoutFiles()
+    public function setupLayoutFiles()
     {
         $this->laravelClasses = $this->getLaravelClassNames();
 
@@ -367,6 +388,17 @@ class Start
 
             $fieldName = trim($fieldName, ",");
 
+            $type = strtolower($type);
+
+            if(!array_key_exists($type, $this->validTypes)) {
+                $this->command->error($type. " is not a valid property type! ");
+                $this->resetModels();
+                if($this->fromFile)
+                    exit;
+                else
+                    $this->createModels();
+            }
+
             if(!$skip && !empty($fieldName)) {
                 $properties[$fieldName] = $type;
             }
@@ -573,7 +605,7 @@ class Start
                 {
                     $rule .= $this->increment();
                 } else {
-                    $rule .= $this->setColumn($type, $field);
+                    $rule .= $this->setColumn($this->validTypes[$type], $field);
 
                     if ( !empty($setting) ) {
                         $rule .= $this->addColumnOption($setting);
@@ -593,7 +625,8 @@ class Start
             $editMigrations = $this->command->confirm('Would you like to edit your migrations file before running it [y/n]? ', true);
 
             if ($editMigrations) {
-                $this->command->error('Remember to run "php artisan migrate" after editing your migration file');
+                $this->command->info('Remember to run "php artisan migrate" after editing your migration file');
+                $this->command->info('And "php artisan db:seed" after editing your seed file');
             } else {
                 while (true) {
                     try {
@@ -736,14 +769,26 @@ class Start
                     $fakerType = "";
                     switch($type) {
                         case "integer":
+                        case "biginteger":
+                        case "smallinteger":
+                        case "tinyinteger":
                             $fakerType = "randomDigitNotNull";
                             break;
                         case "string":
                             $fakerType = "word";
                             break;
+                        case "float":
+                        case "double":
+                            $fakerType = "randomFloat";
+                            break;
+                        case "mediumtext":
+                        case "longtext":
+                        case "binary":
+                            $fakerType = "text";
+                            break;
                     }
 
-                    $fakerType = $fakerType ? "\$faker->".$fakerType : "";
+                    $fakerType = $fakerType ? "\$faker->".$fakerType : "0";
                 } else {
                     $fakerType = "\$faker->".$fakerProperty;
                 }
