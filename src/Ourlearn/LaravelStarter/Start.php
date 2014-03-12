@@ -390,16 +390,16 @@ class Start
 
             $type = strtolower($type);
 
-            if(!array_key_exists($type, $this->validTypes)) {
-                $this->command->error($type. " is not a valid property type! ");
-                $this->resetModels();
-                if($this->fromFile)
-                    exit;
-                else
-                    $this->createModels();
-            }
-
             if(!$skip && !empty($fieldName)) {
+                if(!array_key_exists($type, $this->validTypes)) {
+                    $this->command->error($type. " is not a valid property type! ");
+                    $this->resetModels();
+                    if($this->fromFile)
+                        exit;
+                    else
+                        $this->createModels();
+                }
+
                 $properties[$fieldName] = $type;
             }
         }
