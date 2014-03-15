@@ -7,11 +7,15 @@ return array(
 	| Repository Pattern
 	|--------------------------------------------------------------------------
 	|
-	| This is where you define if you want to use the repository pattern
+	| This is where you define if you want to use the repository pattern.
+    |
+    | Set baseRepository to true if you want all repositories to derive
+    |   from a base repository interface
 	|
 	*/
 
     'repository' => true,
+    'baseRepository' => true,
 
     /*
 	|--------------------------------------------------------------------------

@@ -80,6 +80,8 @@ class Start
 
         $configSettings['useRepository'] = \Config::get("$package::repository");
 
+        $configSettings['useBaseRepository'] = \Config::get("$package::baseRepository");
+
         return $configSettings;
     }
 
@@ -832,12 +834,21 @@ class Start
 
         $baseRepository = $this->configSettings['pathTo']['repositoryInterfaces'] . $this->nameOf("baseRepositoryInterface") . ".php";
 
-        if(!file_exists($baseRepository))
-            $this->makeFileFromTemplate($baseRepository, $this->configSettings['pathTo']['templates']."base-repository-interface.txt");
+        $useBaseRepository = $this->configSettings['useBaseRepository'];
+
+        $repoTemplate = $this->configSettings['pathTo']['templates']."repository-interface";
+
+        if($useBaseRepository) {
+            if(!file_exists($baseRepository))
+                $this->makeFileFromTemplate($baseRepository, $this->configSettings['pathTo']['templates']."base-repository-interface.txt");
+            $repoTemplate .= "-with-base";
+        }
+
+        $repoTemplate .= ".txt";
 
         $fileName = $this->configSettings['pathTo']['repositoryInterfaces'] . $this->nameOf("repositoryInterface") . ".php";
 
-        $this->makeFileFromTemplate($fileName, $this->configSettings['pathTo']['templates']."repository-interface.txt");
+        $this->makeFileFromTemplate($fileName, $repoTemplate);
     }
 
     /**
