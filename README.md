@@ -111,7 +111,7 @@ Then, you can edit your bash file to include a new alias:
 
 Then run `laravel project-name` and watch as your application is fully built and scaffolded for you :)
 
-Video of this process coming soon.
+Watch a [demonstration](http://youtu.be/e7otZWQSqrY) on youtube
 
 ## Future ideas
 
