@@ -94,6 +94,7 @@ return array(
         'modelName' => '[Model]',
         'test' => '[Models]ControllerTest',
         'repository' => 'Eloquent[Model]Repository',
+        'baseRepositoryInterface' => 'RepositoryInterface',
         'repositoryInterface' => '[Model]RepositoryInterface',
         'viewFolder' => '[model]',
 

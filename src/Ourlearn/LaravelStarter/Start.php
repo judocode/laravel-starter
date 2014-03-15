@@ -830,6 +830,11 @@ class Start
     {
         $this->fileCreator->createDirectory($this->configSettings['pathTo']['repositoryInterfaces']);
 
+        $baseRepository = $this->configSettings['pathTo']['repositoryInterfaces'] . $this->nameOf("baseRepositoryInterface") . ".php";
+
+        if(!file_exists($baseRepository))
+            $this->makeFileFromTemplate($baseRepository, $this->configSettings['pathTo']['templates']."base-repository-interface.txt");
+
         $fileName = $this->configSettings['pathTo']['repositoryInterfaces'] . $this->nameOf("repositoryInterface") . ".php";
 
         $this->makeFileFromTemplate($fileName, $this->configSettings['pathTo']['templates']."repository-interface.txt");
