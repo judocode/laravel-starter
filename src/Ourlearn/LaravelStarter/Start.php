@@ -661,7 +661,7 @@ class Start
         if(!$this->timestamps)
             $fileContents .= "\tpublic \$timestamps = false;\n";
             
-        if(!$this->softDeletes)
+        if($this->softDeletes)
             $fileContents .= "\tprotected \$softDelete = true;\n";
 
         $properties = "";
