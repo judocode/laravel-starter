@@ -41,6 +41,8 @@ If namespace is set, then it is applied globally, else you can namespace specifi
 
 `-nt` is an option that sets timestamps to false on the particular model.
 
+`-sd` is an option that sets softDelete to true on the particular model.
+
 ###Configurations
 
 This now comes with a configuration file. Configure all file directories, class names, view files, whether or not you want repository pattern, which css/js files to download, and you can completely customize view and layout files from within the templates folder! Be sure to run:

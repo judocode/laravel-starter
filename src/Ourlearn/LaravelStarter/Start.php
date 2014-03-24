@@ -17,6 +17,7 @@ class Start
     private $fileCreator;
     private $assetDownloader;
     private $timestamps = true;
+    private $softDeletes = false;
 
     protected $configSettings;
     protected $command;
@@ -291,6 +292,7 @@ class Start
         $this->model = null;
         $this->fillForeignKeys = array();
         $this->timestamps = true;
+        $this->softDeletes = false;
     }
 
     private function getModelsWithRelationships(&$values)
@@ -386,6 +388,10 @@ class Start
                     $this->timestamps = false;
                     $skip = true;
                 }
+                if($option == "sd") {
+                    $this->softDeletes = true;
+                    $skip = true;
+                }
             }
 
             $fieldName = trim($fieldName, ",");
@@ -459,6 +465,9 @@ class Start
 
         if($this->timestamps)
             $content .= "\t\t\t" . $this->setColumn('timestamps', null) . ";\n";
+            
+        if($this->softDeletes)
+            $content .= "\t\t\t" . $this->setColumn('softDeletes', null) . ";\n";
 
         $content .= $this->addForeignKeys();
         $content .= "\t\t});\n";
@@ -652,6 +661,9 @@ class Start
 
         if(!$this->timestamps)
             $fileContents .= "\tpublic \$timestamps = false;\n";
+            
+        if($this->softDeletes)
+            $fileContents .= "\tprotected \$softDelete = true;\n";
 
         $properties = "";
         foreach ($this->propertiesArr as $property => $type) {
