@@ -292,6 +292,7 @@ class Start
         $this->model = null;
         $this->fillForeignKeys = array();
         $this->timestamps = true;
+        $this->softDeletes = false;
     }
 
     private function getModelsWithRelationships(&$values)
