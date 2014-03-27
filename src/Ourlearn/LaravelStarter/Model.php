@@ -3,11 +3,22 @@
 class Model
 {
     private $modelName;
+    private $originalName;
     private $namespace;
+    private $tableName;
 
     public function __construct($modelName, $namespace = "")
     {
-        $this->modelName = strtolower($modelName);
+        $this->originalName = strtolower($modelName);
+        $this->tableName = str_plural(strtolower($modelName));
+        $this->modelName = "";
+
+        $modelSplit = explode("_", strtolower($modelName));
+
+        foreach ($modelSplit as $modelSegment) {
+            $this->modelName .= ucfirst($modelSegment);
+        }
+
         $this->namespace = $namespace;
     }
 
@@ -18,7 +29,12 @@ class Model
 
     public function lower()
     {
-        return $this->modelName;
+        return lcfirst($this->modelName);
+    }
+
+    public function tableNameLower()
+    {
+        return $this->originalName;
     }
 
     public function plural()
@@ -29,6 +45,11 @@ class Model
     public function upperPlural()
     {
         return str_plural($this->upper());
+    }
+
+    public function getTableName()
+    {
+        return $this->tableName;
     }
 
     public function nameWithNamespace()

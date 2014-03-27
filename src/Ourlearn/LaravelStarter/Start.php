@@ -133,23 +133,25 @@ class Start
 
         foreach( $inputFile as $line_num => $modelAndProperties ) {
 
-            if(preg_match("/^resource =/", $modelAndProperties)) {
-                $this->isResource = trim(substr($modelAndProperties, strpos($modelAndProperties, "=")+1));
-                continue;
+            if(!empty($modelAndProperties)) {
+                if(preg_match("/^resource =/", $modelAndProperties)) {
+                    $this->isResource = trim(substr($modelAndProperties, strpos($modelAndProperties, "=")+1));
+                    continue;
+                }
+
+                if(preg_match("/^namespace =/", $modelAndProperties)) {
+                    $this->namespaceGlobal = true;
+                    $this->namespace = trim(substr($modelAndProperties, strpos($modelAndProperties, "=")+1));
+                    $this->fileCreator->namespace = $this->namespace;
+                    continue;
+                }
+
+                $this->saveModelAndProperties($modelAndProperties);
+
+                $this->createFiles();
+
+                sleep(1);
             }
-
-            if(preg_match("/^namespace =/", $modelAndProperties)) {
-                $this->namespaceGlobal = true;
-                $this->namespace = trim(substr($modelAndProperties, strpos($modelAndProperties, "=")+1));
-                $this->fileCreator->namespace = $this->namespace;
-                continue;
-            }
-
-            $this->saveModelAndProperties($modelAndProperties);
-
-            $this->createFiles();
-
-            sleep(1);
         }
     }
 
@@ -442,7 +444,7 @@ class Start
 
     private function createMigrations()
     {
-        $tableName = $this->model->plural();
+        $tableName = $this->model->getTableName();
 
         $createTable = "create_" . $tableName . "_table";
 
@@ -451,7 +453,7 @@ class Start
         $functionContents = $this->migrationUp();
         $fileContents = $this->fileCreator->createFunction("up", $functionContents);
 
-        $functionContents = "\t\tSchema::dropIfExists('".$this->model->plural()."');\n";
+        $functionContents = "\t\tSchema::dropIfExists('".$tableName."');\n";
         $fileContents .= $this->fileCreator->createFunction("down", $functionContents);
 
         $this->fileCreator->createMigrationClass($migrationFile, $fileContents, $this->model->upperPlural());
@@ -459,13 +461,13 @@ class Start
 
     protected function migrationUp()
     {
-        $content = "\t\tSchema::create('".$this->model->plural()."', function(Blueprint \$table) {\n";
+        $content = "\t\tSchema::create('".$this->model->getTableName()."', function(Blueprint \$table) {\n";
         $content .= "\t\t\t" . $this->setColumn('increments', 'id') . ";\n";
         $content .= $this->addColumns();
 
         if($this->timestamps)
             $content .= "\t\t\t" . $this->setColumn('timestamps', null) . ";\n";
-            
+
         if($this->softDeletes)
             $content .= "\t\t\t" . $this->setColumn('softDeletes', null) . ";\n";
 
@@ -475,8 +477,8 @@ class Start
         foreach($this->relationship as $relation) {
             if($relation->getType() == "belongsToMany") {
 
-                $tableOne = $this->model->lower();
-                $tableTwo = $relation->model->lower();
+                $tableOne = $this->model->tableNameLower();
+                $tableTwo = $relation->model->tableNameLower();
 
                 $tableName = $this->getPivotTableName($tableOne, $tableTwo);
 
@@ -487,14 +489,14 @@ class Start
                     $content .= "\t\t});\n";
                 }
             } else if($relation->getType() == "hasOne" || $relation->getType() == "hasMany") {
-                if($this->tableHasColumn($relation->model->plural() ,$this->model->lower()."_id")) {
-                    $content .= "\t\tSchema::table('".$relation->model->plural()."', function(Blueprint \$table) {\n";
-                    $content .= "\t\t\t\$table->foreign('". $this->model->lower()."_id')->references('id')->on('".$this->model->plural()."');\n";
+                if($this->tableHasColumn($relation->model->getTableName() ,$this->model->lower()."_id")) {
+                    $content .= "\t\tSchema::table('".$relation->model->getTableName()."', function(Blueprint \$table) {\n";
+                    $content .= "\t\t\t\$table->foreign('". $this->model->tableNameLower()."_id')->references('id')->on('".$this->model->getTableName()."');\n";
                     $content .= "\t\t});\n";
-                } else if($this->isTableCreated($relation->model->plural())) {
-                    $content .= "\t\tSchema::table('".$relation->model->plural()."', function(Blueprint \$table) {\n";
-                    $content .= "\t\t\t\$table->integer('". $this->model->lower()."_id')->unsigned();\n";
-                    $content .= "\t\t\t\$table->foreign('". $this->model->lower()."_id')->references('id')->on('".$this->model->plural()."');\n";
+                } else if($this->isTableCreated($relation->model->getTableName())) {
+                    $content .= "\t\tSchema::table('".$relation->model->getTableName()."', function(Blueprint \$table) {\n";
+                    $content .= "\t\t\t\$table->integer('". $this->model->tableNameLower()."_id')->unsigned();\n";
+                    $content .= "\t\t\t\$table->foreign('". $this->model->tableNameLower()."_id')->references('id')->on('".$this->model->getTableName()."');\n";
                     $content .= "\t\t});\n";
                 }
             }
@@ -571,11 +573,11 @@ class Start
         $fields = "";
         foreach($this->relationship as $relation) {
             if($relation->getType() == "belongsTo") {
-                $foreignKey = $relation->model->lower() . "_id";
+                $foreignKey = $relation->model->tableNameLower() . "_id";
                 $fields .= "\t\t\t" .$this->setColumn('integer', $foreignKey);
                 $fields .= $this->addColumnOption('unsigned') . ";\n";
-                if($this->isTableCreated($relation->model->plural())) {
-                    $fields .= "\t\t\t\$table->foreign('". $foreignKey."')->references('id')->on('".$relation->model->plural()."');\n";
+                if($this->isTableCreated($relation->model->getTableName())) {
+                    $fields .= "\t\t\t\$table->foreign('". $foreignKey."')->references('id')->on('".$relation->model->getTableName()."');\n";
                     array_push($this->fillForeignKeys, $foreignKey);
                 }
             }
@@ -661,7 +663,7 @@ class Start
 
         if(!$this->timestamps)
             $fileContents .= "\tpublic \$timestamps = false;\n";
-            
+
         if($this->softDeletes)
             $fileContents .= "\tprotected \$softDelete = true;\n";
 
