@@ -659,7 +659,7 @@ class Start
     private function createModel()
     {
         $fileName = $this->configSettings['pathTo']['models'] . $this->nameOf("modelName") . ".php";
-        $fileContents = "protected \$table = '". $this->model->plural() ."';\n";
+        $fileContents = "protected \$table = '". $this->model->getTableName() ."';\n";
 
         if(!$this->timestamps)
             $fileContents .= "\tpublic \$timestamps = false;\n";
