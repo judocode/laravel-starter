@@ -132,7 +132,7 @@ class Start
         $inputFile = file($fileName);
 
         foreach( $inputFile as $line_num => $modelAndProperties ) {
-
+            $modelAndProperties = trim($modelAndProperties);
             if(!empty($modelAndProperties)) {
                 if(preg_match("/^resource =/", $modelAndProperties)) {
                     $this->isResource = trim(substr($modelAndProperties, strpos($modelAndProperties, "=")+1));
