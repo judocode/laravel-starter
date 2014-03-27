@@ -820,7 +820,7 @@ class Start
 
         $functionContent .= "\t\t\t);\n";
 
-        $namespace = $this->namespace ? $this->namespace . "\\" : "";
+        $namespace = $this->namespace ? "\\" . $this->namespace . "\\" : "";
 
         $functionContent .= "\t\t\t". $namespace . $this->model->upper()."::create(\$".$this->model->lower().");\n";
         $functionContent .= "\t\t}\n";
