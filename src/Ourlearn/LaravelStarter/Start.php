@@ -696,7 +696,7 @@ class Start
                 }
             }
 
-            if($continue && !$this->fromFile) {
+            if($continue) {
                 $content = \File::get($relatedModelFile);
                 if (preg_match("/function ".$this->model->lower()."/", $content) !== 1 && preg_match("/function ".$this->model->plural()."/", $content) !== 1) {
                     $index = 0;
