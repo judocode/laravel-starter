@@ -39,7 +39,7 @@ class Model
 
     public function plural()
     {
-        return str_plural($this->modelName);
+        return str_plural(lcfirst($this->modelName));
     }
 
     public function upperPlural()
