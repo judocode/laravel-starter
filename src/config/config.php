@@ -119,10 +119,10 @@ return array(
 
     'views' => array(
 
-        'view',
+        'show',
         'edit',
         'create',
-        'all'
+        'index'
 
     )
 );
