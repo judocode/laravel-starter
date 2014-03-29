@@ -11,7 +11,7 @@ class [controller] extends \BaseController
 
 	public function getIndex()
 	{
-    	$[models] = $this->[model]->paginate(15);
+    	$[models] = $this->[model]->all();
         $this->layout->content = \View::make('[model].index', compact('[models]'));
 	}
 
