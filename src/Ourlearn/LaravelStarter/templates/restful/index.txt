@@ -4,6 +4,9 @@
     <a class="btn btn-success" href="{{ url('[model]/create') }}">New</a>
 </div>
 <div class="row">
+    {{ $[models]->links() }}
+</div>
+<div class="row">
     <table class="table">
         <thead>
             [repeat]
